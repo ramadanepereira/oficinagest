@@ -1,0 +1,1 @@
+export type EstadoStock = 'DISPONIVEL' | 'STOCK_BAIXO' | 'ESGOTADO' | 'EM_REPOSICAO';
