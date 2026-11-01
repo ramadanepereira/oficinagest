@@ -1,6 +1,3 @@
-// COMPOSITION ROOT: único ficheiro onde se instanciam as implementações concretas
-// e se injectam nas classes (DI por construtor).
-
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
@@ -11,57 +8,38 @@ import { pool } from './config/database.js';
 import { errorHandler } from './presentation/middlewares/errorHandler.js';
 import healthRouter from './presentation/routes/health.js';
 import { criarAuthRouter } from './presentation/routes/auth.js';
+import { criarUsuariosRouter } from './presentation/routes/usuarios.js';
+import { criarCategoriasRouter } from './presentation/routes/categorias.js';
 import { BcryptHasher } from './infrastructure/security/BcryptHasher.js';
 import { PgUsuarioRepository } from './infrastructure/repositories/PgUsuarioRepository.js';
+import { PgCategoriaRepository } from './infrastructure/repositories/PgCategoriaRepository.js';
 import { AutenticacaoService } from './application/services/AutenticacaoService.js';
-
-// Injeção de dependências: composição manual (sem framework de DI).
+import { UsuarioService } from './application/services/UsuarioService.js';
+import { CategoriaService } from './application/services/CategoriaService.js';
 const hasher = new BcryptHasher();
 const usuarioRepository = new PgUsuarioRepository(pool);
+const categoriaRepository = new PgCategoriaRepository(pool);
 const autenticacaoService = new AutenticacaoService(usuarioRepository, hasher);
-
+const usuarioService = new UsuarioService(usuarioRepository, hasher);
+const categoriaService = new CategoriaService(categoriaRepository);
 const app = express();
-
-// Segurança: headers HTTP + CORS restrito às origens configuradas.
 app.use(helmet());
-app.use(
-  cors({
-    origin: config.CORS_ORIGIN,
-    credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
-  })
-);
-
-// Parsing de JSON e cookies.
+app.use(cors({ origin: config.CORS_ORIGIN, credentials: true, methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'], allowedHeaders: ['Content-Type', 'Authorization'] }));
 app.use(express.json({ limit: '1mb' }));
 app.use(cookieParser());
-
-// Rate-limit genérico (o do login é específico e está na rota).
-app.use(
-  rateLimit({
-    windowMs: 15 * 60 * 1000,
-    max: 1000,
-    standardHeaders: true,
-    legacyHeaders: false,
-  })
-);
-
-// Rotas com prefixo /api
+app.use(rateLimit({ windowMs: 15 * 60 * 1000, max: 1000, standardHeaders: true, legacyHeaders: false }));
 app.use('/api', healthRouter);
 app.use('/api/auth', criarAuthRouter(autenticacaoService));
-
-// Middleware de erro: sempre o último.
+app.use('/api/utilizadores', criarUsuariosRouter(autenticacaoService, usuarioService));
+app.use('/api/categorias', criarCategoriasRouter(autenticacaoService, categoriaService));
 app.use(errorHandler);
-
-// Início do servidor.
 const server = app.listen(config.PORT, () => {
   console.log(`🚀 Servidor OficinaGest a correr em http://localhost:${config.PORT}`);
   console.log(`   /api/health`);
-  console.log(`   /api/auth/login, /api/auth/logout, /api/auth/me`);
+  console.log(`   /api/auth/*`);
+  console.log(`   /api/utilizadores/*`);
+  console.log(`   /api/categorias/*`);
 });
-
-// Graceful shutdown
 const shutdown = async (sinal: string) => {
   console.log(`\n${sinal} recebido. A encerrar o servidor...`);
   server.close();
