@@ -1,0 +1,1 @@
+export type TipoMovimento = 'ENTRADA' | 'SAIDA' | 'AJUSTE_ENTRADA' | 'AJUSTE_SAIDA';
