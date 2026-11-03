@@ -1,16 +1,21 @@
 import { Router } from 'express';
 import type { MaterialService } from '../../application/services/MaterialService.js';
-import { CodigoDuplicadoError, MaterialNaoEncontradoError, MaterialComStockError } from '../../application/services/MaterialService.js';
+import { CodigoDuplicadoError, MaterialNaoEncontradoError } from '../../application/services/MaterialService.js';
 import { CriarMaterialSchema, AtualizarMaterialSchema } from '../dto/material.dto.js';
 import { criarMiddlewareAuth } from '../middlewares/auth.js';
 import { exigirPerfil } from '../middlewares/perfil.js';
 import type { AutenticacaoService } from '../../application/services/AutenticacaoService.js';
+import type { InventarioFacade } from '../../application/InventarioFacade.js';
+import { MaterialComStockError, MaterialComRequisicoesError } from '../../application/InventarioFacade.js';
 
-export function criarMateriaisRouter(autenticacao: AutenticacaoService, materialService: MaterialService) {
+export function criarMateriaisRouter(
+  autenticacao: AutenticacaoService,
+  materialService: MaterialService,
+  facade: InventarioFacade,
+) {
   const router = Router();
   const authMiddleware = criarMiddlewareAuth(autenticacao);
 
-  // GET /materiais?query=&tipo=&categoria=&estado=&pagina=&tamanho= (todos autenticados)
   router.get('/', authMiddleware, async (req, res, next) => {
     try {
       const filtro = {
@@ -36,7 +41,6 @@ export function criarMateriaisRouter(autenticacao: AutenticacaoService, material
     } catch (err) { next(err); }
   });
 
-  // POST /materiais (só ADMIN)
   router.post('/', authMiddleware, exigirPerfil('ADMINISTRADOR'), async (req, res, next) => {
     try {
       const dto = CriarMaterialSchema.parse(req.body);
@@ -48,7 +52,6 @@ export function criarMateriaisRouter(autenticacao: AutenticacaoService, material
     }
   });
 
-  // PUT /materiais/:id (só ADMIN)
   router.put('/:id', authMiddleware, exigirPerfil('ADMINISTRADOR'), async (req, res, next) => {
     try {
       const id = Number(req.params.id);
@@ -63,26 +66,29 @@ export function criarMateriaisRouter(autenticacao: AutenticacaoService, material
     }
   });
 
-  // DELETE /materiais/:id (só ADMIN; desactivação lógica, secção 6.5)
+  // DELETE /materiais/:id (ADMIN): agora usa a Facade para aplicar a remoção
+  // lógica completa (secção 6.5) — verifica stock e requisições pendentes.
   router.delete('/:id', authMiddleware, exigirPerfil('ADMINISTRADOR'), async (req, res, next) => {
     try {
       const id = Number(req.params.id);
       if (Number.isNaN(id)) { res.status(400).json({ codigo: 'VALIDACAO', mensagem: 'ID inválido' }); return; }
-      await materialService.desativar(id);
+      await facade.desactivarMaterial({ idMaterial: id, idUsuario: req.usuario!.id });
       res.json({ mensagem: 'Material removido' });
     } catch (err) {
       if (err instanceof MaterialNaoEncontradoError) { res.status(404).json({ codigo: 'NAO_ENCONTRADO', mensagem: err.message }); return; }
       if (err instanceof MaterialComStockError) { res.status(409).json({ codigo: 'MATERIAL_COM_STOCK', mensagem: err.message }); return; }
+      if (err instanceof MaterialComRequisicoesError) { res.status(409).json({ codigo: 'MATERIAL_COM_REQUISICOES', mensagem: err.message }); return; }
       next(err);
     }
   });
 
-  // POST /materiais/:id/reactivar (só ADMIN)
+  // POST /materiais/:id/reactivar (ADMIN): agora usa a Facade para registar
+  // a alteração no histórico (RN07).
   router.post('/:id/reactivar', authMiddleware, exigirPerfil('ADMINISTRADOR'), async (req, res, next) => {
     try {
       const id = Number(req.params.id);
       if (Number.isNaN(id)) { res.status(400).json({ codigo: 'VALIDACAO', mensagem: 'ID inválido' }); return; }
-      const ok = await materialService.reativar(id);
+      const ok = await facade.reativarMaterial({ idMaterial: id, idUsuario: req.usuario!.id });
       if (!ok) { res.status(404).json({ codigo: 'NAO_ENCONTRADO', mensagem: 'Material não encontrado' }); return; }
       res.json({ mensagem: 'Material reativado' });
     } catch (err) {
