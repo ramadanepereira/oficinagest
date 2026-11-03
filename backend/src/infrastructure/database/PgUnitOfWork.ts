@@ -2,6 +2,8 @@ import type { Pool, PoolClient } from 'pg';
 import type { UnitOfWork, ContextoTransacao } from '../../application/ports/UnitOfWork.js';
 import { PgStockRepository } from '../repositories/PgStockRepository.js';
 import { PgHistoricoRepository } from '../repositories/PgHistoricoRepository.js';
+import { PgMaterialRepositoryTx } from '../repositories/PgMaterialRepositoryTx.js';
+import { PgRequisicaoRepositoryTx } from '../repositories/PgRequisicaoRepositoryTx.js';
 
 // Implementação PostgreSQL do UnitOfWork (secção 7).
 // Abre UMA ligação do pool, inicia transacção, executa o trabalho e faz
@@ -16,6 +18,8 @@ export class PgUnitOfWork implements UnitOfWork {
       const tx: ContextoTransacao = {
         stock: new PgStockRepository(client),
         historico: new PgHistoricoRepository(client),
+        materiais: new PgMaterialRepositoryTx(client),
+        requisicoes: new PgRequisicaoRepositoryTx(client),
       };
       const resultado = await trabalho(tx);
       await client.query('COMMIT');

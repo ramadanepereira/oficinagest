@@ -37,14 +37,7 @@ export class PgStockRepository implements StockRepository {
     return rows[0] ? this.paraDominio(rows[0]) : null;
   }
 
-  async guardar(stock: StockMaterial): Promise<void> {
-    // O id_material não está exposto no StockMaterial; é passado pelo chamador
-    // via closure. Aqui assumimos que o stock foi obtido por id e guardamos
-    // pelo mesmo id. Para simplicidade, o PgUnitOfWork liga o id ao stock.
-    throw new Error('Usar guardarComId no contexto de transacção');
-  }
-
-  async guardarComId(idMaterial: number, stock: StockMaterial): Promise<void> {
+  async guardar(idMaterial: number, stock: StockMaterial): Promise<void> {
     await this.client.query(
       `UPDATE stock_material
        SET quantidade = $1, stock_minimo = $2, estado = $3,

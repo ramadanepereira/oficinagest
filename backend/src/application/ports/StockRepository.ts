@@ -6,6 +6,7 @@ export interface StockRepository {
   obterParaAtualizacao(idMaterial: number): Promise<StockMaterial | null>;
   // Lê sem bloqueio (consultas).
   obter(idMaterial: number): Promise<StockMaterial | null>;
-  // Persiste quantidade, mínimo, estado e datas.
-  guardar(stock: StockMaterial): Promise<void>;
+  // Persiste quantidade, mínimo, estado e datas. O id é passado porque o
+  // agregado StockMaterial é puro e não carrega identidade de BD.
+  guardar(idMaterial: number, stock: StockMaterial): Promise<void>;
 }
