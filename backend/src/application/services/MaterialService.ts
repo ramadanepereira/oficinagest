@@ -18,10 +18,15 @@ export class MaterialService {
   async criar(dto: CriarMaterialDto) {
     // RN01/RN06: código único (mesmo depois de desactivado).
     if (await this.repositorio.codigoExiste(dto.codigo)) throw new CodigoDuplicadoError();
+    // O tipo vai como 1.o parâmetro; as props NÃO incluem tipo (a fábrica injecta).
     const material = MaterialFactory.criar(dto.tipo, {
-      id: 0, codigo: dto.codigo, nome: dto.nome, tipo: dto.tipo,
-      idCategoria: dto.idCategoria, unidade: dto.unidade,
-      activo: true, criadoEm: new Date(),
+      id: 0,
+      codigo: dto.codigo,
+      nome: dto.nome,
+      idCategoria: dto.idCategoria,
+      unidade: dto.unidade,
+      activo: true,
+      criadoEm: new Date(),
     });
     const criado = await this.repositorio.criar(material, dto.quantidadeInicial, dto.stockMinimo);
     return criado.resumoPublico();
@@ -34,8 +39,6 @@ export class MaterialService {
     return atualizado?.resumoPublico() ?? null;
   }
 
-  // Remoção lógica (secção 6.5): só se stock = 0. A verificação de requisições
-  // pendentes é adicionada no Incremento 2.
   async desativar(id: number) {
     const existente = await this.repositorio.obterPorId(id);
     if (!existente) throw new MaterialNaoEncontradoError();
@@ -51,6 +54,15 @@ export class MaterialService {
   }
 }
 
-export class CodigoDuplicadoError extends Error { constructor() { super('Código já existe'); this.name = 'CodigoDuplicadoError'; } }
-export class MaterialNaoEncontradoError extends Error { constructor() { super('Material não encontrado'); this.name = 'MaterialNaoEncontradoError'; } }
-export class MaterialComStockError extends Error { constructor() { super('Material com stock; faça um ajuste de saída antes de remover'); this.name = 'MaterialComStockError'; } }
+export class CodigoDuplicadoError extends Error {
+  constructor() { super('Código já existe'); this.name = 'CodigoDuplicadoError'; }
+}
+export class MaterialNaoEncontradoError extends Error {
+  constructor() { super('Material não encontrado'); this.name = 'MaterialNaoEncontradoError'; }
+}
+export class MaterialComStockError extends Error {
+  constructor() {
+    super('Material com stock; faça um ajuste de saída antes de remover');
+    this.name = 'MaterialComStockError';
+  }
+}

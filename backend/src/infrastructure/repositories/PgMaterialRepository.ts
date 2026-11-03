@@ -9,14 +9,23 @@ export class PgMaterialRepository implements MaterialRepository {
   constructor(private pool: Pool) {}
 
   private paraDominio(row: any): Material {
+    // O tipo vem do ENUM da BD e vai como 1.o parâmetro da fábrica.
+    // As props aqui NAO incluem 'tipo' (injectado pela fábrica).
     return MaterialFactory.criar(row.tipo as TipoMaterial, {
-      id: Number(row.id), codigo: row.codigo, nome: row.nome,
-      idCategoria: Number(row.id_categoria), unidade: row.unidade,
-      activo: row.activo, criadoEm: new Date(row.criado_em),
-      stock: row.qtd !== undefined ? {
-        quantidade: Number(row.qtd), stockMinimo: Number(row.stock_minimo),
-        estado: row.estado as EstadoStock,
-      } : undefined,
+      id: Number(row.id),
+      codigo: row.codigo,
+      nome: row.nome,
+      idCategoria: Number(row.id_categoria),
+      unidade: row.unidade,
+      activo: row.activo,
+      criadoEm: new Date(row.criado_em),
+      stock: row.qtd !== undefined
+        ? {
+            quantidade: Number(row.qtd),
+            stockMinimo: Number(row.stock_minimo),
+            estado: row.estado as EstadoStock,
+          }
+        : undefined,
     });
   }
 
@@ -37,7 +46,8 @@ export class PgMaterialRepository implements MaterialRepository {
     const offset = (pagina - 1) * tamanho;
 
     const countRes = await this.pool.query(
-      `SELECT COUNT(*) AS total FROM material m LEFT JOIN stock_material s ON s.id_material = m.id WHERE ${where}`, vals
+      `SELECT COUNT(*) AS total FROM material m LEFT JOIN stock_material s ON s.id_material = m.id WHERE ${where}`,
+      vals,
     );
     const total = Number(countRes.rows[0].total);
 
@@ -45,7 +55,7 @@ export class PgMaterialRepository implements MaterialRepository {
       `SELECT m.*, s.quantidade AS qtd, s.stock_minimo, s.estado
        FROM material m LEFT JOIN stock_material s ON s.id_material = m.id
        WHERE ${where} ORDER BY m.nome LIMIT $${i} OFFSET $${i + 1}`,
-      [...vals, tamanho, offset]
+      [...vals, tamanho, offset],
     );
     return { itens: rows.map((r) => this.paraDominio(r)), total };
   }
@@ -54,7 +64,8 @@ export class PgMaterialRepository implements MaterialRepository {
     const { rows } = await this.pool.query(
       `SELECT m.*, s.quantidade AS qtd, s.stock_minimo, s.estado
        FROM material m LEFT JOIN stock_material s ON s.id_material = m.id
-       WHERE m.id = $1 LIMIT 1`, [id]
+       WHERE m.id = $1 LIMIT 1`,
+      [id],
     );
     return rows[0] ? this.paraDominio(rows[0]) : null;
   }
@@ -68,7 +79,6 @@ export class PgMaterialRepository implements MaterialRepository {
     return (rowCount ?? 0) > 0;
   }
 
-  // Cria material + linha de stock numa transacção atómica (RN05/RN08).
   async criar(m: Material, quantidadeInicial: number, stockMinimo: number): Promise<Material> {
     const client = await this.pool.connect();
     try {
@@ -76,17 +86,22 @@ export class PgMaterialRepository implements MaterialRepository {
       const res = await client.query(
         `INSERT INTO material (codigo, nome, tipo, id_categoria, unidade, activo)
          VALUES ($1, $2, $3, $4, $5, TRUE) RETURNING *`,
-        [m.codigo, m.nome, m.tipo, m.idCategoria, m.unidade]
+        [m.codigo, m.nome, m.tipo, m.idCategoria, m.unidade],
       );
       const estado = (await import('../../domain/stock/StatusStock.js')).StatusStock
         .inicial(quantidadeInicial, stockMinimo).nome();
       await client.query(
         `INSERT INTO stock_material (id_material, quantidade, stock_minimo, estado)
          VALUES ($1, $2, $3, $4)`,
-        [res.rows[0].id, quantidadeInicial, stockMinimo, estado]
+        [res.rows[0].id, quantidadeInicial, stockMinimo, estado],
       );
       await client.query('COMMIT');
-      return this.paraDominio({ ...res.rows[0], qtd: quantidadeInicial, stock_minimo: stockMinimo, estado });
+      return this.paraDominio({
+        ...res.rows[0],
+        qtd: quantidadeInicial,
+        stock_minimo: stockMinimo,
+        estado,
+      });
     } catch (e) {
       await client.query('ROLLBACK');
       throw e;
@@ -95,8 +110,13 @@ export class PgMaterialRepository implements MaterialRepository {
     }
   }
 
-  async atualizar(id: number, dados: { nome?: string; unidade?: string; stockMinimo?: number }): Promise<Material | null> {
-    const campos: string[] = []; const vals: any[] = []; let i = 1;
+  async atualizar(
+    id: number,
+    dados: { nome?: string; unidade?: string; stockMinimo?: number },
+  ): Promise<Material | null> {
+    const campos: string[] = [];
+    const vals: any[] = [];
+    let i = 1;
     if (dados.nome !== undefined) { campos.push(`nome = $${i}`); vals.push(dados.nome); i++; }
     if (dados.unidade !== undefined) { campos.push(`unidade = $${i}`); vals.push(dados.unidade); i++; }
     if (campos.length > 0) {
@@ -104,9 +124,9 @@ export class PgMaterialRepository implements MaterialRepository {
       await this.pool.query(`UPDATE material SET ${campos.join(', ')} WHERE id = $${i}`, vals);
     }
     if (dados.stockMinimo !== undefined) {
-      // Alterar o mínimo recalcula o estado (regra 6.4, aposAlterarMinimo).
       const { rows } = await this.pool.query(
-        'SELECT quantidade FROM stock_material WHERE id_material = $1', [id]
+        'SELECT quantidade FROM stock_material WHERE id_material = $1',
+        [id],
       );
       if (rows[0]) {
         const qtd = Number(rows[0].quantidade);
@@ -114,7 +134,7 @@ export class PgMaterialRepository implements MaterialRepository {
           .inicial(qtd, dados.stockMinimo).nome();
         await this.pool.query(
           'UPDATE stock_material SET stock_minimo = $1, estado = $2 WHERE id_material = $3',
-          [dados.stockMinimo, estado, id]
+          [dados.stockMinimo, estado, id],
         );
       }
     }
