@@ -1,0 +1,1 @@
+export type EstadoRequisicao = 'PENDENTE' | 'APROVADA' | 'REPROVADA' | 'DEVOLVIDA';
