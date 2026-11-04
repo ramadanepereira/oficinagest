@@ -12,6 +12,7 @@ export interface MovimentoResumo {
   idMaterial: number;
   codigo: string;
   nome: string;
+  categoria: string;
   tipo: TipoMovimento;
   quantidade: number;
   idUsuario: number;
@@ -21,7 +22,7 @@ export interface MovimentoResumo {
 }
 
 export interface MovimentosPorDia {
-  data: string;       // ISO 'YYYY-MM-DD'
+  data: string;
   entradas: number;
   saidas: number;
 }
@@ -32,10 +33,10 @@ export interface ContagemPorTipo {
 }
 
 export interface TotaisStock {
-  materiais: number;     // só activos
-  stockBaixo: number;    // STOCK_BAIXO e activo
-  esgotado: number;      // ESGOTADO e activo
-  emReposicao: number;   // EM_REPOSICAO e activo
+  materiais: number;
+  stockBaixo: number;
+  esgotado: number;
+  emReposicao: number;
 }
 
 export interface DashboardRepository {

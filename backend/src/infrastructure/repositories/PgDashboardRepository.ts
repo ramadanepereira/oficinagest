@@ -9,7 +9,6 @@ import type { TipoMovimento } from '../../domain/stock/TipoMovimento.js';
 export class PgDashboardRepository implements DashboardRepository {
   constructor(private pool: Pool) {}
 
-  // Totais: só materiais activos. EM_REPOSICAO não conta para stockBaixo/esgotado.
   async totais(): Promise<TotaisStock> {
     const { rows } = await this.pool.query(`
       SELECT
@@ -29,7 +28,6 @@ export class PgDashboardRepository implements DashboardRepository {
     };
   }
 
-  // Distribuição por tipo: só materiais activos.
   async contagemPorTipo(): Promise<ContagemPorTipo[]> {
     const { rows } = await this.pool.query(`
       SELECT m.tipo, COUNT(*) AS total
@@ -44,8 +42,6 @@ export class PgDashboardRepository implements DashboardRepository {
     }));
   }
 
-  // Movimentos dos últimos 7 dias, agrupados por dia e tipo.
-  // Usa generate_series para garantir dias com 0 movimentos aparecem.
   async movimentosUltimos7Dias(): Promise<MovimentosPorDia[]> {
     const { rows } = await this.pool.query(`
       WITH dias AS (
@@ -76,13 +72,13 @@ export class PgDashboardRepository implements DashboardRepository {
     }));
   }
 
-  // Últimas movimentações (para a tabela do dashboard).
   async ultimasMovimentacoes(limite: number): Promise<MovimentoResumo[]> {
     const { rows } = await this.pool.query(
-      `SELECT m.id, m.id_material, mat.codigo, mat.nome, m.tipo, m.quantidade,
-              m.id_usuario, u.nome AS utilizador, m.observacao, m.criado_em
+      `SELECT m.id, m.id_material, mat.codigo, mat.nome, cat.descricao AS categoria,
+              m.tipo, m.quantidade, m.id_usuario, u.nome AS utilizador, m.observacao, m.criado_em
        FROM movimento_stock m
        JOIN material mat ON mat.id = m.id_material
+       JOIN categoria_material cat ON cat.id = mat.id_categoria
        JOIN usuario u ON u.id = m.id_usuario
        ORDER BY m.criado_em DESC
        LIMIT $1`,
@@ -93,6 +89,7 @@ export class PgDashboardRepository implements DashboardRepository {
       idMaterial: Number(r.id_material),
       codigo: r.codigo,
       nome: r.nome,
+      categoria: r.categoria,
       tipo: r.tipo as TipoMovimento,
       quantidade: Number(r.quantidade),
       idUsuario: Number(r.id_usuario),
@@ -102,12 +99,9 @@ export class PgDashboardRepository implements DashboardRepository {
     }));
   }
 
-  // Alertas: materiais STOCK_BAIXO ou ESGOTADO activos (não EM_REPOSICAO — secção 6.6)
-  // + requisições PENDENTES agrupadas.
   async alertas(): Promise<AlertaResumo[]> {
     const alertas: AlertaResumo[] = [];
 
-    // Stock baixo/esgotado
     const { rows: mat } = await this.pool.query(`
       SELECT m.id, m.codigo, m.nome, s.estado, s.quantidade, s.stock_minimo
       FROM material m
@@ -123,13 +117,27 @@ export class PgDashboardRepository implements DashboardRepository {
         tipo: esgotado ? 'ESGOTADO' : 'STOCK_BAIXO',
         titulo: `${r.codigo} — ${r.nome}`,
         detalhe: esgotado
-          ? 'Material esgotado'
-          : `Stock baixo: ${r.quantidade} de ${r.stock_minimo} mínimo`,
+          ? `${r.nome} — 0 un.`
+          : `${r.nome} — ${r.quantidade} un.`,
         criadoEm: new Date(),
       });
     }
 
-    // Requisições pendentes (1 alerta agregado, não 1 por requisição)
+    const { rows: rep } = await this.pool.query(`
+      SELECT COUNT(*) AS n FROM material m
+      JOIN stock_material s ON s.id_material = m.id
+      WHERE m.activo = TRUE AND s.estado = 'EM_REPOSICAO'
+    `);
+    const nRep = Number(rep[0].n);
+    if (nRep > 0) {
+      alertas.push({
+        tipo: 'REQUISICOES_PENDENTES',
+        titulo: `Em reposição: ${nRep} material${nRep === 1 ? '' : 'is'}`,
+        detalhe: 'A aguardar entrada de stock',
+        criadoEm: new Date(),
+      });
+    }
+
     const { rows: req } = await this.pool.query(`
       SELECT COUNT(*) AS n FROM requisicao WHERE estado = 'PENDENTE'
     `);
@@ -138,7 +146,7 @@ export class PgDashboardRepository implements DashboardRepository {
       alertas.push({
         tipo: 'REQUISICOES_PENDENTES',
         titulo: `${n} requisiç${n === 1 ? 'ão' : 'ões'} pendente${n === 1 ? '' : 's'}`,
-        detalhe: 'A aguardar aprovação do atendente',
+        detalhe: `${n} requisiç${n === 1 ? 'ão aguarda' : 'ões aguardam'} atendimento.`,
         criadoEm: new Date(),
       });
     }

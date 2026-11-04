@@ -8,9 +8,6 @@ import type {
 } from '../../application/ports/HistoricoRepository.js';
 import type { TipoMovimento } from '../../domain/stock/TipoMovimento.js';
 
-// RN05/RN07: escreve o histórico NA MESMA transacção do movimento,
-// para que um rollback não deixe histórico órfão.
-// A listagem (consulta) usa o pool, não o client transaccional.
 export class PgHistoricoRepository implements HistoricoRepository {
   constructor(private clientOrPool: PoolClient | Pool) {}
 
@@ -50,10 +47,11 @@ export class PgHistoricoRepository implements HistoricoRepository {
     const total = Number(countRes.rows[0].total);
 
     const { rows } = await this.clientOrPool.query(
-      `SELECT m.id, m.id_material, mat.codigo, mat.nome, m.tipo, m.quantidade,
-              m.id_usuario, u.nome AS utilizador, m.observacao, m.criado_em
+      `SELECT m.id, m.id_material, mat.codigo, mat.nome, cat.descricao AS categoria,
+              m.tipo, m.quantidade, m.id_usuario, u.nome AS utilizador, m.observacao, m.criado_em
        FROM movimento_stock m
        JOIN material mat ON mat.id = m.id_material
+       JOIN categoria_material cat ON cat.id = mat.id_categoria
        JOIN usuario u ON u.id = m.id_usuario
        ${where}
        ORDER BY m.criado_em DESC
@@ -66,6 +64,7 @@ export class PgHistoricoRepository implements HistoricoRepository {
         idMaterial: Number(r.id_material),
         codigo: r.codigo,
         nome: r.nome,
+        categoria: r.categoria,
         tipo: r.tipo as TipoMovimento,
         quantidade: Number(r.quantidade),
         idUsuario: Number(r.id_usuario),

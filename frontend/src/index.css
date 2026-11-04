@@ -1,0 +1,12 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  font-family: 'Inter', system-ui, sans-serif;
+  @apply bg-surface text-text dark:bg-surface-dark dark:text-text-dark;
+}
+
+* {
+  @apply border-border dark:border-border-dark;
+}

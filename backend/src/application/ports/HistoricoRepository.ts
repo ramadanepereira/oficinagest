@@ -31,6 +31,7 @@ export interface MovimentoPublico {
   idMaterial: number;
   codigo: string;
   nome: string;
+  categoria: string;
   tipo: TipoMovimento;
   quantidade: number;
   idUsuario: number;
@@ -39,7 +40,6 @@ export interface MovimentoPublico {
   criadoEm: Date;
 }
 
-// RN05/RN07: toda a movimentação e alteração fica registada (data + utilizador).
 export interface HistoricoRepository {
   registarMovimento(mov: RegistoMovimento): Promise<void>;
   registarAlteracao(alt: RegistoAlteracao): Promise<void>;
