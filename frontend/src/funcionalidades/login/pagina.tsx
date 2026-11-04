@@ -86,7 +86,7 @@ export function LoginPage() {
       </div>
 
       {/* Painel direito claro */}
-      <div className="relative flex flex-col items-center justify-center bg-surface p-6 dark:bg-surface-dark">
+      <div className="relative flex flex-col items-center justify-center bg-surface px-6 pt-20 pb-16 dark:bg-surface-dark">
         <div className="absolute right-6 top-6">
           <ToggleTema />
         </div>

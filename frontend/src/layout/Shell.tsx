@@ -10,7 +10,7 @@ export function Shell() {
         <BarraSuperior />
         <main className="relative flex-1 overflow-y-auto bg-surface p-6 dark:bg-surface-dark">
           <Outlet />
-          <p className="pointer-events-none fixed bottom-3 right-4 flex items-center gap-1.5 text-xs text-muted">
+          <p className="mt-4 flex items-center justify-end gap-1.5 text-xs text-muted">
             <span className="h-2 w-2 rounded-full bg-state-ok" /> Sistema online
           </p>
         </main>

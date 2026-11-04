@@ -70,7 +70,7 @@ export function DashboardPage() {
       </div>
 
       {/* Cartões KPI */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-6">
         {cartoes.map((c) => (
           <Cartao key={c.rotulo} className="p-4">
             <div className="flex items-center gap-3">
@@ -78,7 +78,7 @@ export function DashboardPage() {
                 <c.Icone className="h-5 w-5" />
               </span>
               <div className="min-w-0">
-                <p className="truncate text-xs text-muted">{c.rotulo}</p>
+                <p className="text-xs leading-snug text-muted">{c.rotulo}</p>
                 <p className="text-2xl font-bold leading-tight">{c.valor}</p>
                 <p className={`flex items-center gap-1 text-[11px] ${c.corSub}`}>
                   <c.Trend className="h-3 w-3" /> {c.sub}
