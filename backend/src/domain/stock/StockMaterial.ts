@@ -4,18 +4,30 @@ import { StatusStock as StatusStockNs } from './StatusStock.js';
 import type { EstadoStock } from './EstadoStock.js';
 
 // AGREGADO do stock: guarda quantidade + mínimo + estado actual.
-// Depois de cada operação, faz this.estado = this.estado.aposXxx(...) —
+// Campos internos com prefixo _ ; acesso público só pelos getters.
+// Depois de cada operação, this._estado = this._estado.aposXxx(...) —
 // a decisão da transição é SEMPRE da classe de estado (padrão State, secção 6.3).
 export class StockMaterial {
-  private constructor(
-    private quantidade: Quantidade,
-    private stockMinimo: number,
-    private estado: StatusStock,
-    private dataUltimaEntrada: Date | null,
-    private dataUltimaSaida: Date | null,
-  ) {}
+  private _quantidade: Quantidade;
+  private _stockMinimo: number;
+  private _estado: StatusStock;
+  private _dataUltimaEntrada: Date | null;
+  private _dataUltimaSaida: Date | null;
 
-  // Cria stock novo (material acabado de cadastrar): estado calculado por inicial().
+  private constructor(
+    qtd: Quantidade,
+    min: number,
+    estado: StatusStock,
+    dataUltimaEntrada: Date | null,
+    dataUltimaSaida: Date | null,
+  ) {
+    this._quantidade = qtd;
+    this._stockMinimo = min;
+    this._estado = estado;
+    this._dataUltimaEntrada = dataUltimaEntrada;
+    this._dataUltimaSaida = dataUltimaSaida;
+  }
+
   static criar(quantidade: Quantidade, stockMinimo: number): StockMaterial {
     return new StockMaterial(
       quantidade,
@@ -26,7 +38,6 @@ export class StockMaterial {
     );
   }
 
-  // Reconstrói a partir de uma linha da BD (estado lido do ENUM persistido).
   static reconstruir(
     quantidade: Quantidade,
     stockMinimo: number,
@@ -43,51 +54,46 @@ export class StockMaterial {
     );
   }
 
-  get quantidade(): Quantidade { return this.quantidade; }
-  get stockMinimo(): number { return this.stockMinimo; }
-  get estado(): StatusStock { return this.estado; }
-  get dataUltimaEntrada(): Date | null { return this.dataUltimaEntrada; }
-  get dataUltimaSaida(): Date | null { return this.dataUltimaSaida; }
+  get quantidade(): Quantidade { return this._quantidade; }
+  get stockMinimo(): number { return this._stockMinimo; }
+  get estado(): StatusStock { return this._estado; }
+  get dataUltimaEntrada(): Date | null { return this._dataUltimaEntrada; }
+  get dataUltimaSaida(): Date | null { return this._dataUltimaSaida; }
 
-  nomeEstado(): EstadoStock { return this.estado.nome(); }
+  nomeEstado(): EstadoStock { return this._estado.nome(); }
 
-  // Entrada: soma e reavalia o estado (State decide a transição).
   adicionarEntrada(qtd: Quantidade, agora: Date): void {
-    this.quantidade = this.quantidade.adicionar(qtd);
-    this.estado = this.estado.aposEntrada(this.quantidade.valor, this.stockMinimo);
-    this.dataUltimaEntrada = agora;
+    this._quantidade = this._quantidade.adicionar(qtd);
+    this._estado = this._estado.aposEntrada(this._quantidade.valor, this._stockMinimo);
+    this._dataUltimaEntrada = agora;
   }
 
-  // Saída: subtrai e reavalia. RN02 é validado ANTES (na Facade, via
-  // ValidadorDeMovimentoStock); aqui Quantidade.subtrair garante RN08.
   retirarSaida(qtd: Quantidade, agora: Date): void {
-    this.quantidade = this.quantidade.subtrair(qtd);
-    this.estado = this.estado.aposSaida(this.quantidade.valor, this.stockMinimo);
-    this.dataUltimaSaida = agora;
+    this._quantidade = this._quantidade.subtrair(qtd);
+    this._estado = this._estado.aposSaida(this._quantidade.valor, this._stockMinimo);
+    this._dataUltimaSaida = agora;
   }
 
   iniciarReposicao(): void {
-    // Pode lançar TransicaoInvalidaError (State decide).
-    this.estado = this.estado.iniciarReposicao(this.quantidade.valor, this.stockMinimo);
+    this._estado = this._estado.iniciarReposicao(this._quantidade.valor, this._stockMinimo);
   }
 
   cancelarReposicao(): void {
-    this.estado = this.estado.cancelarReposicao(this.quantidade.valor, this.stockMinimo);
+    this._estado = this._estado.cancelarReposicao(this._quantidade.valor, this._stockMinimo);
   }
 
-  // Alterar o mínimo recalcula o estado, excepto em EM_REPOSICAO (State decide).
   alterarMinimo(novoMinimo: number): void {
     if (!Number.isInteger(novoMinimo) || novoMinimo < 0) {
       throw new Error(`Stock mínimo inválido: ${novoMinimo}`);
     }
-    this.stockMinimo = novoMinimo;
-    this.estado = this.estado.aposAlterarMinimo(this.quantidade.valor, this.stockMinimo);
+    this._stockMinimo = novoMinimo;
+    this._estado = this._estado.aposAlterarMinimo(this._quantidade.valor, this._stockMinimo);
   }
 
   resumo() {
     return {
-      quantidade: this.quantidade.valor,
-      stockMinimo: this.stockMinimo,
+      quantidade: this._quantidade.valor,
+      stockMinimo: this._stockMinimo,
       estado: this.nomeEstado(),
     };
   }
