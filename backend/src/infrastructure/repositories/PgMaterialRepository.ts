@@ -30,7 +30,7 @@ export class PgMaterialRepository implements MaterialRepository {
   }
 
   async listar(f: FiltroMateriais): Promise<{ itens: Material[]; total: number }> {
-    const cond: string[] = ['m.activo = TRUE'];
+    const cond: string[] = f.incluirInactivos ? [] : ['m.activo = TRUE'];
     const vals: any[] = [];
     let i = 1;
     if (f.query) {

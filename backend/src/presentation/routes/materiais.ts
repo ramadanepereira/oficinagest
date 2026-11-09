@@ -23,6 +23,7 @@ export function criarMateriaisRouter(
         tipo: req.query.tipo as string | undefined,
         categoria: req.query.categoria ? Number(req.query.categoria) : undefined,
         estado: req.query.estado as string | undefined,
+        incluirInactivos: req.query.incluirInactivos === 'true',
         pagina: req.query.pagina ? Number(req.query.pagina) : undefined,
         tamanho: req.query.tamanho ? Number(req.query.tamanho) : undefined,
       };
@@ -66,8 +67,6 @@ export function criarMateriaisRouter(
     }
   });
 
-  // DELETE /materiais/:id (ADMIN): agora usa a Facade para aplicar a remoção
-  // lógica completa (secção 6.5) — verifica stock e requisições pendentes.
   router.delete('/:id', authMiddleware, exigirPerfil('ADMINISTRADOR'), async (req, res, next) => {
     try {
       const id = Number(req.params.id);
@@ -82,8 +81,6 @@ export function criarMateriaisRouter(
     }
   });
 
-  // POST /materiais/:id/reactivar (ADMIN): agora usa a Facade para registar
-  // a alteração no histórico (RN07).
   router.post('/:id/reactivar', authMiddleware, exigirPerfil('ADMINISTRADOR'), async (req, res, next) => {
     try {
       const id = Number(req.params.id);

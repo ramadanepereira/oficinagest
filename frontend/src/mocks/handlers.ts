@@ -3,8 +3,6 @@ import type {
   Utilizador, DashboardResumo, Movimento, Categoria, Material, EstadoStock, Alerta,
 } from '../api/types.ts';
 
-// MSW STATEFUL: o estado muta com as acções, para que as notificações e os
-// totais reflitam realmente o que acontece no sistema durante o desenvolvimento.
 const admin: Utilizador = { id: 1, nome: 'Ramadane Pereira', username: 'admin', email: 'admin@oficinagest.local', perfil: 'ADMINISTRADOR', activo: true };
 const atendente: Utilizador = { id: 2, nome: 'Atendente', username: 'atendente', email: 'atendente@oficinagest.local', perfil: 'ATENDENTE', activo: true };
 const mecanico: Utilizador = { id: 3, nome: 'Mecânico', username: 'mecanico', email: 'mecanico@oficinagest.local', perfil: 'MECANICO', activo: true };
@@ -28,7 +26,6 @@ const materiais: Material[] = [
 let movimentos: Movimento[] = [
   { id: 1, idMaterial: 3, codigo: 'MAT-003', nome: 'Filtro de Ar', categoria: 'Peças', tipo: 'ENTRADA', quantidade: 50, idUsuario: 1, utilizador: 'Administrador', criadoEm: new Date(Date.now() - 2 * 3600e3).toISOString() },
   { id: 2, idMaterial: 2, codigo: 'MAT-002', nome: 'Chave de fenda', categoria: 'Ferramentas', tipo: 'SAIDA', quantidade: 2, idUsuario: 3, utilizador: 'Mecânico 1', criadoEm: new Date(Date.now() - 5 * 3600e3).toISOString() },
-  { id: 3, idMaterial: 2, codigo: 'MAT-002', nome: 'Óleo de motor', categoria: 'Consumíveis', tipo: 'SAIDA', quantidade: 5, idUsuario: 2, utilizador: 'Atendente', criadoEm: new Date(Date.now() - 8 * 3600e3).toISOString() },
 ];
 
 let requisicoes = [
@@ -42,11 +39,10 @@ function recalcEstado(qtd: number, min: number): EstadoStock {
   if (qtd <= min) return 'STOCK_BAIXO';
   return 'DISPONIVEL';
 }
-
 function calcularAlertas(): Alerta[] {
   const a: Alerta[] = [];
   for (const m of materiais) {
-    if (!m.stock) continue;
+    if (!m.activo || !m.stock) continue;
     if (m.stock.estado === 'ESGOTADO') a.push({ tipo: 'ESGOTADO', titulo: 'Stock esgotado', detalhe: `${m.nome} — 0 un.`, criadoEm: new Date().toISOString() });
     else if (m.stock.estado === 'STOCK_BAIXO') a.push({ tipo: 'STOCK_BAIXO', titulo: 'Stock baixo', detalhe: `${m.nome} — ${m.stock.quantidade} un.`, criadoEm: new Date().toISOString() });
   }
@@ -54,13 +50,12 @@ function calcularAlertas(): Alerta[] {
   if (pend > 0) a.push({ tipo: 'REQUISICOES_PENDENTES', titulo: 'Requisições pendentes', detalhe: `${pend} requisições aguardam atendimento.`, criadoEm: new Date().toISOString() });
   return a;
 }
-
 function calcularTotais() {
   return {
     materiais: materiais.filter((m) => m.activo).length,
-    stockBaixo: materiais.filter((m) => m.stock?.estado === 'STOCK_BAIXO').length,
-    esgotado: materiais.filter((m) => m.stock?.estado === 'ESGOTADO').length,
-    emReposicao: materiais.filter((m) => m.stock?.estado === 'EM_REPOSICAO').length,
+    stockBaixo: materiais.filter((m) => m.activo && m.stock?.estado === 'STOCK_BAIXO').length,
+    esgotado: materiais.filter((m) => m.activo && m.stock?.estado === 'ESGOTADO').length,
+    emReposicao: materiais.filter((m) => m.activo && m.stock?.estado === 'EM_REPOSICAO').length,
   };
 }
 
@@ -89,17 +84,71 @@ export const handlers = [
 
   http.get('/api/utilizadores', () => HttpResponse.json({ utilizadores: usuarios })),
   http.get('/api/categorias', () => HttpResponse.json({ categorias })),
-  http.get('/api/materiais', () => HttpResponse.json({ itens: materiais, total: materiais.length })),
+
+  http.get('/api/materiais', ({ request: req }) => {
+    const url = new URL(req.url);
+    const q = (url.searchParams.get('query') ?? '').toLowerCase();
+    const tipo = url.searchParams.get('tipo');
+    const categoria = url.searchParams.get('categoria');
+    const estado = url.searchParams.get('estado');
+    const incluirInactivos = url.searchParams.get('incluirInactivos') === 'true';
+    const pagina = Number(url.searchParams.get('pagina') ?? 1);
+    const tamanho = Number(url.searchParams.get('tamanho') ?? 8);
+    let itens = materiais.filter((m) => incluirInactivos || m.activo);
+    if (q) itens = itens.filter((m) => m.nome.toLowerCase().includes(q) || m.codigo.toLowerCase().includes(q));
+    if (tipo) itens = itens.filter((m) => m.tipo === tipo);
+    if (categoria) itens = itens.filter((m) => m.idCategoria === Number(categoria));
+    if (estado) itens = itens.filter((m) => m.stock?.estado === estado);
+    const total = itens.length;
+    const inicio = (pagina - 1) * tamanho;
+    return HttpResponse.json({ itens: itens.slice(inicio, inicio + tamanho), total });
+  }),
   http.get('/api/materiais/:id', ({ params }) => {
     const m = materiais.find((x) => x.id === Number(params.id));
     return m ? HttpResponse.json({ material: m }) : HttpResponse.json({ codigo: 'NAO_ENCONTRADO', mensagem: 'Não encontrado' }, { status: 404 });
   }),
+  http.post('/api/materiais', async ({ request }) => {
+    const b = (await request.json()) as any;
+    if (materiais.some((m) => m.codigo === b.codigo)) return HttpResponse.json({ codigo: 'CODIGO_DUPLICADO', mensagem: 'Código já existe' }, { status: 409 });
+    const m: Material = {
+      id: proximoId++, codigo: b.codigo, nome: b.nome, tipo: b.tipo, idCategoria: Number(b.idCategoria),
+      unidade: b.unidade ?? 'un', activo: true,
+      stock: { quantidade: Number(b.quantidadeInicial ?? 0), stockMinimo: Number(b.stockMinimo ?? 0),
+        estado: recalcEstado(Number(b.quantidadeInicial ?? 0), Number(b.stockMinimo ?? 0)) },
+    };
+    materiais.push(m);
+    return HttpResponse.json({ material: m }, { status: 201 });
+  }),
+  http.put('/api/materiais/:id', async ({ params, request }) => {
+    const m = materiais.find((x) => x.id === Number(params.id));
+    if (!m) return HttpResponse.json({ codigo: 'NAO_ENCONTRADO', mensagem: 'Não encontrado' }, { status: 404 });
+    const b = (await request.json()) as any;
+    if (b.nome !== undefined) m.nome = b.nome;
+    if (b.unidade !== undefined) m.unidade = b.unidade;
+    if (b.stockMinimo !== undefined && m.stock) {
+      m.stock.stockMinimo = Number(b.stockMinimo);
+      m.stock.estado = recalcEstado(m.stock.quantidade, m.stock.stockMinimo);
+    }
+    return HttpResponse.json({ material: m });
+  }),
+  http.delete('/api/materiais/:id', ({ params }) => {
+    const m = materiais.find((x) => x.id === Number(params.id));
+    if (!m) return HttpResponse.json({ codigo: 'NAO_ENCONTRADO', mensagem: 'Não encontrado' }, { status: 404 });
+    if ((m.stock?.quantidade ?? 0) > 0) return HttpResponse.json({ codigo: 'MATERIAL_COM_STOCK', mensagem: 'Material com stock; faça um ajuste de saída antes de remover' }, { status: 409 });
+    m.activo = false;
+    return HttpResponse.json({ mensagem: 'Material removido' });
+  }),
+  http.post('/api/materiais/:id/reativar', ({ params }) => {
+    const m = materiais.find((x) => x.id === Number(params.id));
+    if (!m) return HttpResponse.json({ codigo: 'NAO_ENCONTRADO', mensagem: 'Não encontrado' }, { status: 404 });
+    m.activo = true;
+    return HttpResponse.json({ mensagem: 'Material reativado' });
+  }),
 
-  // Movimentos STATEFUL: mutam o stock e geram notificações coerentes.
   http.post('/api/movimentos/entradas', async ({ request }) => {
     const b = (await request.json()) as { idMaterial: number; quantidade: number };
     const m = materiais.find((x) => x.id === b.idMaterial);
-    if (!m || !m.stock) return HttpResponse.json({ codigo: 'NAO_ENCONTRADO', mensagem: 'Material não encontrado' }, { status: 404 });
+    if (!m || !m.stock) return HttpResponse.json({ codigo: 'NAO_ENCONTRADO', mensagem: 'Não encontrado' }, { status: 404 });
     m.stock.quantidade += b.quantidade;
     m.stock.estado = recalcEstado(m.stock.quantidade, m.stock.stockMinimo);
     movimentos.unshift({ id: proximoId++, idMaterial: m.id, codigo: m.codigo, nome: m.nome, categoria: categorias.find((c) => c.id === m.idCategoria)?.descricao ?? '', tipo: 'ENTRADA', quantidade: b.quantidade, idUsuario: usuarioActual?.id ?? 1, utilizador: usuarioActual?.nome ?? '', criadoEm: new Date().toISOString() });
@@ -108,8 +157,8 @@ export const handlers = [
   http.post('/api/movimentos/saidas', async ({ request }) => {
     const b = (await request.json()) as { idMaterial: number; quantidade: number };
     const m = materiais.find((x) => x.id === b.idMaterial);
-    if (!m || !m.stock) return HttpResponse.json({ codigo: 'NAO_ENCONTRADO', mensagem: 'Material não encontrado' }, { status: 404 });
-    if (b.quantidade > m.stock.quantidade) return HttpResponse.json({ codigo: 'STOCK_INSUFICIENTE', mensagem: `Stock insuficiente: tem ${m.stock.quantidade}, tentou retirar ${b.quantidade}` }, { status: 409 });
+    if (!m || !m.stock) return HttpResponse.json({ codigo: 'NAO_ENCONTRADO', mensagem: 'Não encontrado' }, { status: 404 });
+    if (b.quantidade > m.stock.quantidade) return HttpResponse.json({ codigo: 'STOCK_INSUFICIENTE', mensagem: `Stock insuficiente: tem ${m.stock.quantidade}` }, { status: 409 });
     m.stock.quantidade -= b.quantidade;
     m.stock.estado = recalcEstado(m.stock.quantidade, m.stock.stockMinimo);
     movimentos.unshift({ id: proximoId++, idMaterial: m.id, codigo: m.codigo, nome: m.nome, categoria: categorias.find((c) => c.id === m.idCategoria)?.descricao ?? '', tipo: 'SAIDA', quantidade: b.quantidade, idUsuario: usuarioActual?.id ?? 1, utilizador: usuarioActual?.nome ?? '', criadoEm: new Date().toISOString() });
@@ -117,7 +166,6 @@ export const handlers = [
   }),
   http.get('/api/movimentos', () => HttpResponse.json({ itens: movimentos, total: movimentos.length })),
 
-  // Requisições STATEFUL.
   http.get('/api/requisicoes', () => HttpResponse.json({ itens: requisicoes, total: requisicoes.length })),
   http.post('/api/requisicoes', async ({ request }) => {
     const b = (await request.json()) as { idMaterial: number; quantidade: number };
@@ -125,28 +173,14 @@ export const handlers = [
     requisicoes.push(r);
     return HttpResponse.json({ requisicao: r }, { status: 201 });
   }),
-  http.patch('/api/requisicoes/:id/aprovar', ({ params }) => {
-    const r = requisicoes.find((x) => x.id === Number(params.id));
-    if (!r) return HttpResponse.json({ codigo: 'NAO_ENCONTRADO', mensagem: 'Não encontrada' }, { status: 404 });
-    if (r.estado !== 'PENDENTE') return HttpResponse.json({ codigo: 'TRANSICAO_INVALIDA', mensagem: 'Transição inválida' }, { status: 409 });
-    r.estado = 'APROVADA'; r.idAtendente = usuarioActual?.id ?? 2;
-    return HttpResponse.json({ requisicao: r });
-  }),
-  http.patch('/api/requisicoes/:id/reprovar', ({ params }) => {
-    const r = requisicoes.find((x) => x.id === Number(params.id));
-    if (!r) return HttpResponse.json({ codigo: 'NAO_ENCONTRADO', mensagem: 'Não encontrada' }, { status: 404 });
-    if (r.estado !== 'PENDENTE') return HttpResponse.json({ codigo: 'TRANSICAO_INVALIDA', mensagem: 'Transição inválida' }, { status: 409 });
-    r.estado = 'REPROVADA'; r.idAtendente = usuarioActual?.id ?? 2;
-    return HttpResponse.json({ requisicao: r });
-  }),
 
   http.get('/api/dashboard/resumo', () => {
     const r: DashboardResumo = {
       totais: calcularTotais(),
       porTipo: [
-        { tipo: 'PECA', total: materiais.filter((m) => m.tipo === 'PECA').length },
-        { tipo: 'FERRAMENTA', total: materiais.filter((m) => m.tipo === 'FERRAMENTA').length },
-        { tipo: 'EQUIPAMENTO', total: materiais.filter((m) => m.tipo === 'EQUIPAMENTO').length },
+        { tipo: 'PECA', total: materiais.filter((m) => m.tipo === 'PECA' && m.activo).length },
+        { tipo: 'FERRAMENTA', total: materiais.filter((m) => m.tipo === 'FERRAMENTA' && m.activo).length },
+        { tipo: 'EQUIPAMENTO', total: materiais.filter((m) => m.tipo === 'EQUIPAMENTO' && m.activo).length },
       ],
       movimentosUltimos7Dias: dias,
       ultimasMovimentacoes: movimentos.slice(0, 5),

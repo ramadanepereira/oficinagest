@@ -1,8 +1,13 @@
 import type { Material } from '../../domain/material/Material.js';
 
 export interface FiltroMateriais {
-  query?: string; tipo?: string; categoria?: number; estado?: string;
-  pagina?: number; tamanho?: number;
+  query?: string;
+  tipo?: string;
+  categoria?: number;
+  estado?: string;
+  incluirInactivos?: boolean;
+  pagina?: number;
+  tamanho?: number;
 }
 
 export interface MaterialRepository {
