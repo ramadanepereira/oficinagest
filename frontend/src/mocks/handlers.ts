@@ -30,7 +30,6 @@ let movimentos: Movimento[] = [
 
 let requisicoes = [
   { id: 1, idMaterial: 5, idMecanico: 3, idAtendente: null, quantidade: 2, estado: 'PENDENTE' as const, criadoEm: new Date().toISOString() },
-  { id: 2, idMaterial: 2, idMecanico: 3, idAtendente: null, quantidade: 4, estado: 'PENDENTE' as const, criadoEm: new Date().toISOString() },
 ];
 let proximoId = 100;
 
@@ -57,6 +56,14 @@ function calcularTotais() {
     esgotado: materiais.filter((m) => m.activo && m.stock?.estado === 'ESGOTADO').length,
     emReposicao: materiais.filter((m) => m.activo && m.stock?.estado === 'EM_REPOSICAO').length,
   };
+}
+function registarMovimento(m: Material, tipo: Movimento['tipo'], qtd: number) {
+  movimentos.unshift({
+    id: proximoId++, idMaterial: m.id, codigo: m.codigo, nome: m.nome,
+    categoria: categorias.find((c) => c.id === m.idCategoria)?.descricao ?? '',
+    tipo, quantidade: qtd, idUsuario: usuarioActual?.id ?? 1, utilizador: usuarioActual?.nome ?? '',
+    criadoEm: new Date().toISOString(),
+  });
 }
 
 const dias: { data: string; entradas: number; saidas: number }[] = [];
@@ -110,12 +117,8 @@ export const handlers = [
   http.post('/api/materiais', async ({ request }) => {
     const b = (await request.json()) as any;
     if (materiais.some((m) => m.codigo === b.codigo)) return HttpResponse.json({ codigo: 'CODIGO_DUPLICADO', mensagem: 'Código já existe' }, { status: 409 });
-    const m: Material = {
-      id: proximoId++, codigo: b.codigo, nome: b.nome, tipo: b.tipo, idCategoria: Number(b.idCategoria),
-      unidade: b.unidade ?? 'un', activo: true,
-      stock: { quantidade: Number(b.quantidadeInicial ?? 0), stockMinimo: Number(b.stockMinimo ?? 0),
-        estado: recalcEstado(Number(b.quantidadeInicial ?? 0), Number(b.stockMinimo ?? 0)) },
-    };
+    const qtd = Number(b.quantidadeInicial ?? 0); const min = Number(b.stockMinimo ?? 0);
+    const m: Material = { id: proximoId++, codigo: b.codigo, nome: b.nome, tipo: b.tipo, idCategoria: Number(b.idCategoria), unidade: b.unidade ?? 'un', activo: true, stock: { quantidade: qtd, stockMinimo: min, estado: recalcEstado(qtd, min) } };
     materiais.push(m);
     return HttpResponse.json({ material: m }, { status: 201 });
   }),
@@ -125,10 +128,7 @@ export const handlers = [
     const b = (await request.json()) as any;
     if (b.nome !== undefined) m.nome = b.nome;
     if (b.unidade !== undefined) m.unidade = b.unidade;
-    if (b.stockMinimo !== undefined && m.stock) {
-      m.stock.stockMinimo = Number(b.stockMinimo);
-      m.stock.estado = recalcEstado(m.stock.quantidade, m.stock.stockMinimo);
-    }
+    if (b.stockMinimo !== undefined && m.stock) { m.stock.stockMinimo = Number(b.stockMinimo); m.stock.estado = recalcEstado(m.stock.quantidade, m.stock.stockMinimo); }
     return HttpResponse.json({ material: m });
   }),
   http.delete('/api/materiais/:id', ({ params }) => {
@@ -145,23 +145,53 @@ export const handlers = [
     return HttpResponse.json({ mensagem: 'Material reativado' });
   }),
 
+  // Reposição (única mudança manual de estado).
+  http.post('/api/materiais/:id/iniciar-reposicao', ({ params }) => {
+    const m = materiais.find((x) => x.id === Number(params.id));
+    if (!m || !m.stock) return HttpResponse.json({ codigo: 'NAO_ENCONTRADO', mensagem: 'Não encontrado' }, { status: 404 });
+    if (m.stock.estado !== 'STOCK_BAIXO' && m.stock.estado !== 'ESGOTADO')
+      return HttpResponse.json({ codigo: 'TRANSICAO_INVALIDA', mensagem: `Não é possível iniciar reposição em ${m.stock.estado}` }, { status: 409 });
+    m.stock.estado = 'EM_REPOSICAO';
+    return HttpResponse.json({ stock: m.stock });
+  }),
+  http.post('/api/materiais/:id/cancelar-reposicao', ({ params }) => {
+    const m = materiais.find((x) => x.id === Number(params.id));
+    if (!m || !m.stock) return HttpResponse.json({ codigo: 'NAO_ENCONTRADO', mensagem: 'Não encontrado' }, { status: 404 });
+    if (m.stock.estado !== 'EM_REPOSICAO')
+      return HttpResponse.json({ codigo: 'TRANSICAO_INVALIDA', mensagem: 'Não é possível cancelar reposição neste estado' }, { status: 409 });
+    m.stock.estado = recalcEstado(m.stock.quantidade, m.stock.stockMinimo);
+    return HttpResponse.json({ stock: m.stock });
+  }),
+
   http.post('/api/movimentos/entradas', async ({ request }) => {
     const b = (await request.json()) as { idMaterial: number; quantidade: number };
     const m = materiais.find((x) => x.id === b.idMaterial);
     if (!m || !m.stock) return HttpResponse.json({ codigo: 'NAO_ENCONTRADO', mensagem: 'Não encontrado' }, { status: 404 });
     m.stock.quantidade += b.quantidade;
-    m.stock.estado = recalcEstado(m.stock.quantidade, m.stock.stockMinimo);
-    movimentos.unshift({ id: proximoId++, idMaterial: m.id, codigo: m.codigo, nome: m.nome, categoria: categorias.find((c) => c.id === m.idCategoria)?.descricao ?? '', tipo: 'ENTRADA', quantidade: b.quantidade, idUsuario: usuarioActual?.id ?? 1, utilizador: usuarioActual?.nome ?? '', criadoEm: new Date().toISOString() });
+    m.stock.estado = m.stock.estado === 'EM_REPOSICAO' && m.stock.quantidade > m.stock.stockMinimo ? 'DISPONIVEL' : recalcEstado(m.stock.quantidade, m.stock.stockMinimo);
+    registarMovimento(m, 'ENTRADA', b.quantidade);
     return HttpResponse.json({ stock: m.stock }, { status: 201 });
   }),
   http.post('/api/movimentos/saidas', async ({ request }) => {
     const b = (await request.json()) as { idMaterial: number; quantidade: number };
     const m = materiais.find((x) => x.id === b.idMaterial);
     if (!m || !m.stock) return HttpResponse.json({ codigo: 'NAO_ENCONTRADO', mensagem: 'Não encontrado' }, { status: 404 });
-    if (b.quantidade > m.stock.quantidade) return HttpResponse.json({ codigo: 'STOCK_INSUFICIENTE', mensagem: `Stock insuficiente: tem ${m.stock.quantidade}` }, { status: 409 });
+    if (b.quantidade > m.stock.quantidade) return HttpResponse.json({ codigo: 'STOCK_INSUFICIENTE', mensagem: `Stock insuficiente: tem ${m.stock.quantidade}, tentou retirar ${b.quantidade}` }, { status: 409 });
     m.stock.quantidade -= b.quantidade;
     m.stock.estado = recalcEstado(m.stock.quantidade, m.stock.stockMinimo);
-    movimentos.unshift({ id: proximoId++, idMaterial: m.id, codigo: m.codigo, nome: m.nome, categoria: categorias.find((c) => c.id === m.idCategoria)?.descricao ?? '', tipo: 'SAIDA', quantidade: b.quantidade, idUsuario: usuarioActual?.id ?? 1, utilizador: usuarioActual?.nome ?? '', criadoEm: new Date().toISOString() });
+    registarMovimento(m, 'SAIDA', b.quantidade);
+    return HttpResponse.json({ stock: m.stock }, { status: 201 });
+  }),
+  http.post('/api/movimentos/ajustes', async ({ request }) => {
+    const b = (await request.json()) as { idMaterial: number; quantidade: number; observacao?: string };
+    if (!b.observacao || b.observacao.trim() === '') return HttpResponse.json({ codigo: 'VALIDACAO', mensagem: 'Observação obrigatória em ajustes' }, { status: 400 });
+    const m = materiais.find((x) => x.id === b.idMaterial);
+    if (!m || !m.stock) return HttpResponse.json({ codigo: 'NAO_ENCONTRADO', mensagem: 'Não encontrado' }, { status: 404 });
+    if (b.quantidade < 0 && Math.abs(b.quantidade) > m.stock.quantidade)
+      return HttpResponse.json({ codigo: 'STOCK_INSUFICIENTE', mensagem: `Stock insuficiente: tem ${m.stock.quantidade}` }, { status: 409 });
+    m.stock.quantidade += b.quantidade;
+    m.stock.estado = recalcEstado(m.stock.quantidade, m.stock.stockMinimo);
+    registarMovimento(m, b.quantidade > 0 ? 'AJUSTE_ENTRADA' : 'AJUSTE_SAIDA', Math.abs(b.quantidade));
     return HttpResponse.json({ stock: m.stock }, { status: 201 });
   }),
   http.get('/api/movimentos', () => HttpResponse.json({ itens: movimentos, total: movimentos.length })),

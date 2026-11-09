@@ -4,6 +4,7 @@ import { useMateriais, useCategorias, useMutacoesMaterial, type FiltroInventario
 import { ModalMaterial } from './ModalMaterial.tsx';
 import { Confirmacao } from '../../componentes/Confirmacao.tsx';
 import { BadgeEstado } from '../../componentes/BadgeEstado.tsx';
+import { BotoesReposicao } from '../../componentes/BotoesReposicao.tsx';
 import { Cartao } from '../../componentes/Cartao.tsx';
 import { useAuth } from '../../auth/AuthProvider.tsx';
 import { pode } from '../../auth/permissoes.ts';
@@ -24,7 +25,7 @@ export function PaginaInventario() {
 
   const { data, isLoading } = useMateriais(filtro);
   const { data: cat } = useCategorias();
-  const { desativar, reativar } = useMutacoesMaterial();
+  const { desativar, reativar, iniciarReposicao, cancelarReposicao } = useMutacoesMaterial();
 
   const nomeCategoria = (id: number) => cat?.categorias.find((c) => c.id === id)?.descricao ?? '—';
   const totalPaginas = Math.max(1, Math.ceil((data?.total ?? 0) / 8));
@@ -109,6 +110,10 @@ export function PaginaInventario() {
                   {admin && (
                     <td className="px-3 py-2.5">
                       <div className="flex justify-end gap-1">
+                        <BotoesReposicao material={m} perfil={usuario!.perfil}
+                          onIniciar={() => iniciarReposicao.mutate(m.id)}
+                          onCancelar={() => cancelarReposicao.mutate(m.id)}
+                          ocupado={iniciarReposicao.isPending || cancelarReposicao.isPending} />
                         <button onClick={() => { setAEditar(m); setModalAberto(true); }} className="rounded p-1.5 text-state-info hover:bg-state-info/10" title="Editar"><Pencil className="h-4 w-4" /></button>
                         {m.activo ? (
                           <button onClick={() => setADesativar(m)} className="rounded p-1.5 text-state-error hover:bg-state-error/10" title="Desativar"><Trash2 className="h-4 w-4" /></button>
@@ -137,7 +142,6 @@ export function PaginaInventario() {
       </Cartao>
 
       <ModalMaterial aberto={modalAberto} onFechar={() => setModalAberto(false)} material={aEditar} />
-
       <Confirmacao
         aberto={aDesativar !== null}
         onFechar={() => setADesativar(null)}

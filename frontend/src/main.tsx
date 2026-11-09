@@ -7,7 +7,9 @@ import { AuthProvider } from './auth/AuthProvider.tsx';
 import './index.css';
 
 async function bootstrap() {
-  if (import.meta.env.DEV) {
+  // MSW so quando explicitamente pedido (VITE_USE_MOCKS=true).
+  // Por omissao o frontend fala com o backend real via proxy /api.
+  if (import.meta.env.DEV && import.meta.env.VITE_USE_MOCKS === 'true') {
     const { worker } = await import('./mocks/browser.ts');
     await worker.start({ onUnhandledRequest: 'bypass' });
   }
