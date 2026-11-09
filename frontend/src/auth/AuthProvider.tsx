@@ -5,7 +5,7 @@ import type { Utilizador } from '../api/types.ts';
 interface AuthContextValue {
   usuario: Utilizador | null;
   carregando: boolean;
-  login: (username: string, password: string) => Promise<void>;
+  login: (username: string, password: string, lembrar?: boolean) => Promise<void>;
   logout: () => Promise<void>;
 }
 
@@ -22,8 +22,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .finally(() => setCarregando(false));
   }, []);
 
-  async function login(username: string, password: string) {
-    const { utilizador } = await api.post<{ utilizador: Utilizador }>('/auth/login', { username, password });
+  async function login(username: string, password: string, lembrar = false) {
+    const { utilizador } = await api.post<{ utilizador: Utilizador }>('/auth/login', { username, password, lembrar });
     setUsuario(utilizador);
   }
 
@@ -33,9 +33,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <AuthContext.Provider value={{ usuario, carregando, login, logout }}>
-      {children}
-    </AuthContext.Provider>
+    <AuthContext.Provider value={{ usuario, carregando, login, logout }}>{children}</AuthContext.Provider>
   );
 }
 

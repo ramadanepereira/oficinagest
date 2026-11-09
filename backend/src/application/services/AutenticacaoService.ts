@@ -1,48 +1,34 @@
-// Serviço de autenticação: login, logout, sessão.
-// JWT em cookie httpOnly (nunca acessível por JavaScript do cliente).
-// Erros de domínio (credenciais inválidas, utilizador inativo) são lançados
-// e traduzidos para HTTP apenas na camada de apresentação.
 import jwt from 'jsonwebtoken';
 import { config } from '../../config/index.js';
 import type { Usuario } from '../../domain/usuario/Usuario.js';
 import type { HashDePassword } from '../ports/HashDePassword.js';
 import type { UsuarioRepository } from '../ports/UsuarioRepository.js';
 
-// Tempo de vida do token de sessão: 8 horas (dia de trabalho típico).
-const TOKEN_TTL_SEGUNDOS = 8 * 60 * 60;
+// Sessão normal: 8 horas (dia de trabalho). Com "Lembrar-me": 30 dias.
+const TTL_CURTO_SEGUNDOS = 8 * 60 * 60;
+const TTL_LONGO_SEGUNDOS = 30 * 24 * 60 * 60;
 const NOME_COOKIE = 'oficinagest_session';
 
 export class AutenticacaoService {
   constructor(
     private usuarios: UsuarioRepository,
-    private hasher: HashDePassword
+    private hasher: HashDePassword,
   ) {}
 
-  async login(username: string, password: string) {
+  async login(username: string, password: string, lembrar = false) {
     const usuario = await this.usuarios.obterPorUsername(username);
-
-    // RN12: só utilizadores autenticados acedem ao sistema.
-    // Mensagem genérica para não revelar se o utilizador existe.
-    if (!usuario) {
-      throw new CredenciaisInvalidasError();
-    }
-
-    if (!usuario.activo) {
-      throw new ContaDesativadaError();
-    }
+    if (!usuario) throw new CredenciaisInvalidasError();
+    if (!usuario.activo) throw new ContaDesativadaError();
 
     const passwordOk = await this.hasher.verificar(password, usuario.passwordHash);
-    if (!passwordOk) {
-      throw new CredenciaisInvalidasError();
-    }
+    if (!passwordOk) throw new CredenciaisInvalidasError();
 
-    const token = jwt.sign(
-      { sub: usuario.id, perfil: usuario.perfil },
-      config.JWT_SECRET,
-      { expiresIn: TOKEN_TTL_SEGUNDOS }
-    );
+    const ttl = lembrar ? TTL_LONGO_SEGUNDOS : TTL_CURTO_SEGUNDOS;
+    const token = jwt.sign({ sub: usuario.id, perfil: usuario.perfil }, config.JWT_SECRET, {
+      expiresIn: ttl,
+    });
 
-    return { usuario, token, nomeCookie: NOME_COOKIE, ttlSegundos: TOKEN_TTL_SEGUNDOS };
+    return { usuario, token, nomeCookie: NOME_COOKIE, ttlSegundos: ttl };
   }
 
   async validarSessao(token: string | undefined): Promise<Usuario | null> {
@@ -56,7 +42,6 @@ export class AutenticacaoService {
   }
 }
 
-// Erros de domínio — traduzidos para HTTP 401 na camada de apresentação.
 export class CredenciaisInvalidasError extends Error {
   constructor() { super('Credenciais inválidas'); this.name = 'CredenciaisInvalidasError'; }
 }
