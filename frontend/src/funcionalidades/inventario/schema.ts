@@ -11,10 +11,11 @@ export const CriarMaterialSchema = z.object({
 });
 export type CriarMaterialValues = z.infer<typeof CriarMaterialSchema>;
 
-// Edição: o tipo NÃO pode ser alterado depois de criado (secção 7.3).
+// Edição: o tipo NÃO pode ser alterado (decisão de projecto), mas a categoria sim.
 export const EditarMaterialSchema = z.object({
   nome: z.string().min(1, 'Obrigatório'),
   unidade: z.string().min(1),
   stockMinimo: z.coerce.number().int().min(0),
+  idCategoria: z.coerce.number().int().positive('Obrigatório'),
 });
 export type EditarMaterialValues = z.infer<typeof EditarMaterialSchema>;

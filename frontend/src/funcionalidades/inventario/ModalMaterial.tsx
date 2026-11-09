@@ -14,7 +14,6 @@ export function ModalMaterial({ aberto, onFechar, material }: {
 }) {
   return (
     <Modal aberto={aberto} onFechar={onFechar} titulo={material ? 'Editar material' : 'Adicionar material'}>
-      {/* key força o formulário de edição a recriar-se por material (valores sempre correctos) */}
       {material
         ? <FormEditar key={material.id} material={material} onFechar={onFechar} />
         : <FormCriar onFechar={onFechar} />}
@@ -32,11 +31,8 @@ function FormCriar({ onFechar }: { onFechar: () => void }) {
     resolver: zodResolver(CriarMaterialSchema),
     defaultValues: { tipo: 'PECA', unidade: 'un', quantidadeInicial: 0, stockMinimo: 0 },
   });
-
   const tipoActual = watch('tipo');
 
-  // Preenche o código automaticamente com o próximo livre do tipo,
-  // enquanto o utilizador não escrever à mão.
   useEffect(() => {
     if (!codigoTocado && codigos) {
       setValue('codigo', gerarCodigo(tipoActual, codigos.itens.map((m) => m.codigo)));
@@ -44,7 +40,7 @@ function FormCriar({ onFechar }: { onFechar: () => void }) {
   }, [tipoActual, codigos, codigoTocado, setValue]);
 
   async function submeter(v: CriarMaterialValues) {
-    try { await criar.mutateAsync(v); onFechar(); } catch { /* erro mostrado abaixo */ }
+    try { await criar.mutateAsync(v); onFechar(); } catch { /* erro abaixo */ }
   }
 
   return (
@@ -52,7 +48,7 @@ function FormCriar({ onFechar }: { onFechar: () => void }) {
       <div className="grid grid-cols-2 gap-3">
         <div>
           <label className="mb-1 block text-sm">Código * <span className="text-xs text-muted">(automático)</span></label>
-          <input {...register('codigo')} onChange={(e) => { setCodigoTocado(true); }} className={inputCls} placeholder="PEC-001" />
+          <input {...register('codigo')} onInput={() => setCodigoTocado(true)} className={inputCls} placeholder="PEC-001" />
           {errors.codigo && <p className="mt-1 text-xs text-state-error">{errors.codigo.message}</p>}
         </div>
         <div>
@@ -105,6 +101,7 @@ function FormCriar({ onFechar }: { onFechar: () => void }) {
 }
 
 function FormEditar({ material, onFechar }: { material: Material; onFechar: () => void }) {
+  const { data: cat } = useCategorias();
   const { atualizar } = useMutacoesMaterial();
   const { register, handleSubmit, formState: { errors } } = useForm<EditarMaterialValues>({
     resolver: zodResolver(EditarMaterialSchema),
@@ -112,11 +109,12 @@ function FormEditar({ material, onFechar }: { material: Material; onFechar: () =
       nome: material.nome,
       unidade: material.unidade,
       stockMinimo: material.stock?.stockMinimo ?? 0,
+      idCategoria: material.idCategoria,
     },
   });
 
   async function submeter(v: EditarMaterialValues) {
-    try { await atualizar.mutateAsync({ id: material.id, dto: v }); onFechar(); } catch { /* erro mostrado abaixo */ }
+    try { await atualizar.mutateAsync({ id: material.id, dto: v }); onFechar(); } catch { /* erro abaixo */ }
   }
 
   return (
@@ -131,13 +129,20 @@ function FormEditar({ material, onFechar }: { material: Material; onFechar: () =
       </div>
       <div className="grid grid-cols-2 gap-3">
         <div>
+          <label className="mb-1 block text-sm">Categoria *</label>
+          <select {...register('idCategoria')} className={inputCls}>
+            {(cat?.categorias ?? []).map((c) => <option key={c.id} value={c.id}>{c.descricao}</option>)}
+          </select>
+          {errors.idCategoria && <p className="mt-1 text-xs text-state-error">{errors.idCategoria.message}</p>}
+        </div>
+        <div>
           <label className="mb-1 block text-sm">Unidade</label>
           <input {...register('unidade')} className={inputCls} />
         </div>
-        <div>
-          <label className="mb-1 block text-sm">Stock mínimo</label>
-          <input type="number" {...register('stockMinimo')} className={inputCls} />
-        </div>
+      </div>
+      <div>
+        <label className="mb-1 block text-sm">Stock mínimo</label>
+        <input type="number" {...register('stockMinimo')} className={inputCls} />
       </div>
       {atualizar.error && <p className="rounded-lg bg-state-error/10 p-2 text-sm text-state-error">{atualizar.error instanceof ApiError ? atualizar.error.message : 'Erro'}</p>}
       <div className="flex justify-end gap-2 pt-2">

@@ -15,7 +15,7 @@ export interface MaterialRepository {
   obterPorId(id: number): Promise<Material | null>;
   codigoExiste(codigo: string, ignorarId?: number): Promise<boolean>;
   criar(m: Material, quantidadeInicial: number, stockMinimo: number): Promise<Material>;
-  atualizar(id: number, dados: { nome?: string; unidade?: string; stockMinimo?: number }): Promise<Material | null>;
+  atualizar(id: number, dados: { nome?: string; unidade?: string; stockMinimo?: number; idCategoria?: number }): Promise<Material | null>;
   desativar(id: number): Promise<boolean>;
   reativar(id: number): Promise<boolean>;
   obterQuantidade(id: number): Promise<number>;

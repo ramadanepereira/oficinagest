@@ -30,7 +30,7 @@ export class PgMaterialRepository implements MaterialRepository {
   }
 
   async listar(f: FiltroMateriais): Promise<{ itens: Material[]; total: number }> {
-    const cond: string[] = f.incluirInactivos ? [] : ['m.activo = TRUE'];
+    const cond: string[] = f.incluirInactivos ? ['TRUE'] : ['m.activo = TRUE'];
     const vals: any[] = [];
     let i = 1;
     if (f.query) {
@@ -112,13 +112,14 @@ export class PgMaterialRepository implements MaterialRepository {
 
   async atualizar(
     id: number,
-    dados: { nome?: string; unidade?: string; stockMinimo?: number },
+    dados: { nome?: string; unidade?: string; stockMinimo?: number; idCategoria?: number },
   ): Promise<Material | null> {
     const campos: string[] = [];
     const vals: any[] = [];
     let i = 1;
     if (dados.nome !== undefined) { campos.push(`nome = $${i}`); vals.push(dados.nome); i++; }
     if (dados.unidade !== undefined) { campos.push(`unidade = $${i}`); vals.push(dados.unidade); i++; }
+    if (dados.idCategoria !== undefined) { campos.push(`id_categoria = $${i}`); vals.push(dados.idCategoria); i++; }
     if (campos.length > 0) {
       vals.push(id);
       await this.pool.query(`UPDATE material SET ${campos.join(', ')} WHERE id = $${i}`, vals);

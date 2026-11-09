@@ -15,6 +15,7 @@ export const AtualizarMaterialSchema = z.object({
   nome: z.string().min(1).optional(),
   unidade: z.string().min(1).optional(),
   stockMinimo: z.number().int().min(0).optional(),
+  idCategoria: z.number().int().positive().optional(),
 });
 
 export type CriarMaterialDto = z.infer<typeof CriarMaterialSchema>;
