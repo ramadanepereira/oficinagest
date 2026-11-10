@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Plus, Pencil, Trash2, RotateCcw, Search } from 'lucide-react';
 import { useMateriais, useCategorias, useMutacoesMaterial, type FiltroInventario } from './hooks.ts';
 import { ModalMaterial } from './ModalMaterial.tsx';
@@ -17,8 +18,16 @@ export function PaginaInventario() {
   const { usuario } = useAuth();
   const admin = usuario ? pode(usuario.perfil, 'gerirMateriais') : false;
 
-  const [filtro, setFiltro] = useState<FiltroInventario>({ pagina: 1 });
-  const [pesquisa, setPesquisa] = useState('');
+  const [searchParams] = useSearchParams();
+  const queryUrl = searchParams.get('query') ?? '';
+  const [filtro, setFiltro] = useState<FiltroInventario>({ pagina: 1, query: queryUrl || undefined });
+  const [pesquisa, setPesquisa] = useState(queryUrl);
+
+  // Sincroniza com a pesquisa global da barra superior (?query=...).
+  useEffect(() => {
+    setPesquisa(queryUrl);
+    setFiltro((f) => ({ ...f, query: queryUrl || undefined, pagina: 1 }));
+  }, [queryUrl]);
   const [modalAberto, setModalAberto] = useState(false);
   const [aEditar, setAEditar] = useState<Material | null>(null);
   const [aDesativar, setADesativar] = useState<Material | null>(null);
