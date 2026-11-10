@@ -137,7 +137,7 @@ export function LoginPage() {
         titulo={modal === 'reset' ? 'Repor palavra-passe' : 'Pedir uma conta'}>
         <div className="space-y-3 text-sm text-muted">
           {modal === 'reset' ? (
-            <p>O OficinaGest não faz reposição automática de palavras-passe. Contacte o administrador do sistema para repor o seu acesso.</p>
+            <p>O OficinaGest não faz reposição automática de palavras-passe. Contacte o administrador do sistema, que pode repor o seu acesso em Utilizadores → Editar → Nova palavra-passe.</p>
           ) : (
             <p>As contas de utilizador são criadas exclusivamente pelo administrador. Peça-lhe para lhe criar um acesso com o perfil adequado (Atendente ou Mecânico).</p>
           )}

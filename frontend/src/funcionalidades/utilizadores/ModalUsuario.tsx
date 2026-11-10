@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, type UseFormRegister } from 'react-hook-form';
 import { z } from 'zod';
+import { Eye, EyeOff } from 'lucide-react';
 import { Modal } from '../../componentes/Modal.tsx';
 import { useMutacoesUsuario } from './hooks.ts';
 import type { Utilizador } from '../../api/types.ts';
@@ -11,18 +12,44 @@ const CriarSchema = z.object({
   username: z.string().min(3, 'Mínimo 3 caracteres'),
   email: z.string().email('Email inválido'),
   telefone: z.string().optional(),
-  password: z.string().min(6, 'Mínimo 6 caracteres'),
   perfil: z.enum(['ADMINISTRADOR', 'ATENDENTE', 'MECANICO']),
-});
+  password: z.string().min(6, 'Mínimo 6 caracteres'),
+  confirmar: z.string().min(1, 'Confirme a palavra-passe'),
+}).refine((v) => v.password === v.confirmar, { message: 'As palavras-passe não coincidem', path: ['confirmar'] });
+
 const EditarSchema = z.object({
   nome: z.string().min(1, 'Obrigatório'),
   email: z.string().email('Email inválido'),
   telefone: z.string().optional(),
-  password: z.string().optional().refine((v) => !v || v.length >= 6, 'Mínimo 6 caracteres'),
   perfil: z.enum(['ADMINISTRADOR', 'ATENDENTE', 'MECANICO']),
-});
+  password: z.string().optional(),
+  confirmar: z.string().optional(),
+}).refine((v) => !v.password || v.password.length >= 6, { message: 'Mínimo 6 caracteres', path: ['password'] })
+  .refine((v) => !v.password || v.confirmar === v.password, { message: 'As palavras-passe não coincidem', path: ['confirmar'] });
 
-const inputCls = 'w-full rounded-lg border bg-surface px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary dark:bg-surface-dark';
+const inputCls = 'w-full rounded-lg border bg-surface px-3 py-2 pr-10 text-sm outline-none focus:ring-2 focus:ring-primary dark:bg-surface-dark';
+
+// Campo de palavra-passe com botão mostrar/ocultar.
+function CampoPassword({ label, hint, name, register, erro }: {
+  label: string; hint?: string; name: string;
+  register: UseFormRegister<any>; erro?: string;
+}) {
+  const [mostrar, setMostrar] = useState(false);
+  return (
+    <div>
+      <label className="mb-1 block text-sm">{label} {hint && <span className="text-xs text-muted">{hint}</span>}</label>
+      <div className="relative">
+        <input type={mostrar ? 'text' : 'password'} {...register(name)} className={inputCls} />
+        <button type="button" onClick={() => setMostrar((v) => !v)}
+          className="absolute right-3 top-1/2 -translate-y-1/2 text-muted hover:text-text"
+          aria-label={mostrar ? 'Ocultar' : 'Mostrar'}>
+          {mostrar ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+        </button>
+      </div>
+      {erro && <p className="mt-1 text-xs text-state-error">{erro}</p>}
+    </div>
+  );
+}
 
 export function ModalUsuario({ aberto, onFechar, usuario }: {
   aberto: boolean; onFechar: () => void; usuario: Utilizador | null;
@@ -49,7 +76,8 @@ function FormCriar({ onFechar }: { onFechar: () => void }) {
       setErros(m); return;
     }
     setErros({});
-    try { await criar.mutateAsync(r.data); onFechar(); } catch { /* abaixo */ }
+    const { confirmar, ...dto } = r.data;
+    try { await criar.mutateAsync(dto); onFechar(); } catch { /* abaixo */ }
   }
 
   return (
@@ -67,7 +95,8 @@ function FormCriar({ onFechar }: { onFechar: () => void }) {
           </select>
         </div>
       </div>
-      <div><label className="mb-1 block text-sm">Palavra-passe *</label><input type="password" {...register('password')} className={inputCls} />{erros.password && <p className="mt-1 text-xs text-state-error">{erros.password}</p>}</div>
+      <CampoPassword label="Palavra-passe *" name="password" register={register} erro={erros.password} />
+      <CampoPassword label="Confirmar palavra-passe *" name="confirmar" register={register} erro={erros.confirmar} />
       {criar.error && <p className="rounded-lg bg-state-error/10 p-2 text-sm text-state-error">{criar.error instanceof ApiError ? criar.error.message : 'Erro'}</p>}
       <div className="flex justify-end gap-2 pt-2">
         <button type="button" onClick={onFechar} className="rounded-lg border px-4 py-2 text-sm">Cancelar</button>
@@ -81,11 +110,11 @@ function FormEditar({ usuario, onFechar }: { usuario: Utilizador; onFechar: () =
   const { atualizar } = useMutacoesUsuario();
   const [erros, setErros] = useState<Record<string, string>>({});
   const { register, handleSubmit } = useForm({
-    defaultValues: { nome: usuario.nome, email: usuario.email, telefone: usuario.telefone ?? '', password: '', perfil: usuario.perfil },
+    defaultValues: { nome: usuario.nome, email: usuario.email, telefone: usuario.telefone ?? '', password: '', confirmar: '', perfil: usuario.perfil },
   });
 
   async function submeter(v: any) {
-    const r = EditarSchema.safeParse({ ...v, password: v.password || undefined });
+    const r = EditarSchema.safeParse(v);
     if (!r.success) {
       const m: Record<string, string> = {};
       for (const i of r.error.issues) m[String(i.path[0])] = i.message;
@@ -110,7 +139,8 @@ function FormEditar({ usuario, onFechar }: { usuario: Utilizador; onFechar: () =
       </div>
       <div><label className="mb-1 block text-sm">Email *</label><input {...register('email')} className={inputCls} />{erros.email && <p className="mt-1 text-xs text-state-error">{erros.email}</p>}</div>
       <div><label className="mb-1 block text-sm">Telefone</label><input {...register('telefone')} className={inputCls} /></div>
-      <div><label className="mb-1 block text-sm">Nova palavra-passe <span className="text-xs text-muted">(deixar vazio para manter)</span></label><input type="password" {...register('password')} className={inputCls} />{erros.password && <p className="mt-1 text-xs text-state-error">{erros.password}</p>}</div>
+      <CampoPassword label="Nova palavra-passe" hint="(deixar vazio para manter)" name="password" register={register} erro={erros.password} />
+      <CampoPassword label="Confirmar nova palavra-passe" name="confirmar" register={register} erro={erros.confirmar} />
       {atualizar.error && <p className="rounded-lg bg-state-error/10 p-2 text-sm text-state-error">{atualizar.error instanceof ApiError ? atualizar.error.message : 'Erro'}</p>}
       <div className="flex justify-end gap-2 pt-2">
         <button type="button" onClick={onFechar} className="rounded-lg border px-4 py-2 text-sm">Cancelar</button>
