@@ -1,7 +1,9 @@
 import type { Pool } from 'pg';
 import { Requisicao } from '../../domain/requisicao/Requisicao.js';
 import type { EstadoRequisicao } from '../../domain/requisicao/EstadoRequisicao.js';
-import type { RequisicaoRepository, FiltroRequisicoes } from '../../application/ports/RequisicaoRepository.js';
+import type {
+  RequisicaoRepository, FiltroRequisicoes, RequisicaoComNomes,
+} from '../../application/ports/RequisicaoRepository.js';
 
 export class PgRequisicaoRepository implements RequisicaoRepository {
   constructor(private pool: Pool) {}
@@ -18,25 +20,70 @@ export class PgRequisicaoRepository implements RequisicaoRepository {
     });
   }
 
-  async listar(f: FiltroRequisicoes): Promise<{ itens: Requisicao[]; total: number }> {
+  private condicoes(f: FiltroRequisicoes) {
     const cond: string[] = [];
     const vals: any[] = [];
     let i = 1;
     if (f.idMecanico) { cond.push(`r.id_mecanico = $${i}`); vals.push(f.idMecanico); i++; }
     if (f.estado) { cond.push(`r.estado = $${i}`); vals.push(f.estado); i++; }
-    const where = cond.length > 0 ? 'WHERE ' + cond.join(' AND ') : '';
+    return { where: cond.length ? 'WHERE ' + cond.join(' AND ') : '', vals, next: i };
+  }
+
+  async listar(f: FiltroRequisicoes): Promise<{ itens: Requisicao[]; total: number }> {
+    const { where, vals, next } = this.condicoes(f);
     const pagina = Math.max(1, f.pagina ?? 1);
     const tamanho = Math.min(100, Math.max(1, f.tamanho ?? 20));
     const offset = (pagina - 1) * tamanho;
-
     const countRes = await this.pool.query(`SELECT COUNT(*) AS total FROM requisicao r ${where}`, vals);
     const total = Number(countRes.rows[0].total);
-
     const { rows } = await this.pool.query(
-      `SELECT r.* FROM requisicao r ${where} ORDER BY r.criado_em DESC LIMIT $${i} OFFSET $${i + 1}`,
+      `SELECT r.* FROM requisicao r ${where} ORDER BY r.criado_em DESC LIMIT $${next} OFFSET $${next + 1}`,
       [...vals, tamanho, offset],
     );
     return { itens: rows.map((r) => this.paraDominio(r)), total };
+  }
+
+  // Listagem com nomes (JOIN a material e aos dois utilizadores).
+  async listarComNomes(f: FiltroRequisicoes): Promise<{ itens: RequisicaoComNomes[]; total: number }> {
+    const { where, vals, next } = this.condicoes(f);
+    const pagina = Math.max(1, f.pagina ?? 1);
+    const tamanho = Math.min(100, Math.max(1, f.tamanho ?? 20));
+    const offset = (pagina - 1) * tamanho;
+    const countRes = await this.pool.query(`SELECT COUNT(*) AS total FROM requisicao r ${where}`, vals);
+    const total = Number(countRes.rows[0].total);
+    const { rows } = await this.pool.query(
+      `SELECT r.*,
+              m.codigo AS mat_codigo, m.nome AS mat_nome,
+              um.nome  AS mec_nome,
+              ua.nome  AS ate_nome
+       FROM requisicao r
+       LEFT JOIN material m  ON m.id  = r.id_material
+       LEFT JOIN usuario um ON um.id = r.id_mecanico
+       LEFT JOIN usuario ua ON ua.id = r.id_atendente
+       ${where}
+       ORDER BY r.criado_em DESC
+       LIMIT $${next} OFFSET $${next + 1}`,
+      [...vals, tamanho, offset],
+    );
+    return {
+      itens: rows.map((r) => ({
+        id: Number(r.id),
+        idMaterial: Number(r.id_material),
+        idMecanico: Number(r.id_mecanico),
+        idAtendente: r.id_atendente ? Number(r.id_atendente) : null,
+        quantidade: Number(r.quantidade),
+        estado: r.estado as EstadoRequisicao,
+        criadoEm: new Date(r.criado_em),
+        material: r.mat_nome
+          ? { id: Number(r.id_material), codigo: r.mat_codigo, nome: r.mat_nome }
+          : null,
+        mecanico: r.mec_nome ? { id: Number(r.id_mecanico), nome: r.mec_nome } : null,
+        atendente: r.ate_nome && r.id_atendente
+          ? { id: Number(r.id_atendente), nome: r.ate_nome }
+          : null,
+      })),
+      total,
+    };
   }
 
   async obterPorId(id: number): Promise<Requisicao | null> {

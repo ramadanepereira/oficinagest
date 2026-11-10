@@ -10,8 +10,7 @@ export class RequisicaoService {
   ) {}
 
   async listar(f: FiltroRequisicoes) {
-    const { itens, total } = await this.repositorio.listar(f);
-    return { itens: itens.map((r) => r.resumoPublico()), total };
+    return this.repositorio.listarComNomes(f);
   }
 
   // Criar requisição: valida quantidade (RN11) e que o material existe e está activo.
