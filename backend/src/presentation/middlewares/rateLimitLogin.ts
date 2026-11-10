@@ -1,14 +1,17 @@
-// Rate-limit específico para /auth/login: 5 tentativas por IP em 15 minutos.
-// Protege contra ataques de força bruta.
 import rateLimit from 'express-rate-limit';
+
+// Proteção anti-força-bruta no login.
+// Em PRODUÇÃO: 5 tentativas / 15 min por IP (segurança real).
+// Em DESENVOLVIMENTO: 100 tentativas / 15 min (não bloqueia testes manuais).
+const isProd = process.env.NODE_ENV === 'production';
 
 export const rateLimitLogin = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 5,
+  max: isProd ? 5 : 100,
   standardHeaders: true,
   legacyHeaders: false,
   message: {
-    codigo: 'MUITAS_TENTATIVAS',
+    codigo: 'RATE_LIMIT_LOGIN',
     mensagem: 'Demasiadas tentativas de login. Tente novamente em 15 minutos.',
   },
 });

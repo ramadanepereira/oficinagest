@@ -6,7 +6,8 @@ export type Accao =
   | 'verDashboard' | 'verInventario' | 'gerirMateriais'
   | 'registarMovimentos' | 'verMovimentos'
   | 'verRequisicoes' | 'criarRequisicoes' | 'aprovarRequisicoes'
-  | 'verRelatorios' | 'gerirUtilizadores' | 'gerirCategorias' | 'verConfiguracoes';
+  | 'verRelatorios' | 'gerirUtilizadores' | 'gerirCategorias' | 'verConfiguracoes'
+  | 'exportarDados';
 
 const MATRIZ: Record<Perfil, readonly Accao[]> = {
   ADMINISTRADOR: [
@@ -14,16 +15,17 @@ const MATRIZ: Record<Perfil, readonly Accao[]> = {
     'registarMovimentos', 'verMovimentos',
     'verRequisicoes', 'criarRequisicoes', 'aprovarRequisicoes',
     'verRelatorios', 'gerirUtilizadores', 'gerirCategorias', 'verConfiguracoes',
+    'exportarDados',
   ],
   ATENDENTE: [
     'verDashboard', 'verInventario',
     'registarMovimentos', 'verMovimentos',
     'verRequisicoes', 'aprovarRequisicoes',
-    'verRelatorios',
+    'verRelatorios', 'verConfiguracoes',
   ],
   MECANICO: [
     'verDashboard', 'verInventario',
-    'verRequisicoes', 'criarRequisicoes',
+    'verRequisicoes', 'criarRequisicoes', 'verConfiguracoes',
   ],
 };
 

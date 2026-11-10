@@ -8,6 +8,7 @@ import { PaginaRequisicoes } from './funcionalidades/requisicoes/pagina.tsx';
 import { PaginaRelatorios } from './funcionalidades/relatorios/pagina.tsx';
 import { PaginaUtilizadores } from './funcionalidades/utilizadores/pagina.tsx';
 import { PaginaCategorias } from './funcionalidades/categorias/pagina.tsx';
+import { PaginaConfiguracoes } from './funcionalidades/configuracoes/pagina.tsx';
 import { PaginaEmConstrucao } from './funcionalidades/_placeholder/PaginaEmConstrucao.tsx';
 import { RotaProtegida } from './auth/RotaProtegida.tsx';
 
@@ -25,7 +26,7 @@ export default function App() {
           <Route path="relatorios" element={<RotaProtegida accao="verRelatorios"><PaginaRelatorios /></RotaProtegida>} />
           <Route path="utilizadores" element={<RotaProtegida accao="gerirUtilizadores"><PaginaUtilizadores /></RotaProtegida>} />
           <Route path="categorias" element={<RotaProtegida accao="gerirCategorias"><PaginaCategorias /></RotaProtegida>} />
-          <Route path="configuracoes" element={<RotaProtegida accao="verConfiguracoes"><PaginaEmConstrucao titulo="Configurações" /></RotaProtegida>} />
+          <Route path="configuracoes" element={<RotaProtegida accao="verConfiguracoes"><PaginaConfiguracoes /></RotaProtegida>} />
         </Route>
       </Route>
       <Route path="*" element={<Navigate to="/dashboard" replace />} />
