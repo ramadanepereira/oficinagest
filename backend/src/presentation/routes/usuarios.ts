@@ -5,23 +5,30 @@ import { CriarUsuarioSchema, AtualizarUsuarioSchema } from '../dto/usuario.dto.j
 import { criarMiddlewareAuth } from '../middlewares/auth.js';
 import { exigirPerfil } from '../middlewares/perfil.js';
 import type { AutenticacaoService } from '../../application/services/AutenticacaoService.js';
-export function criarUsuariosRouter(autenticacao: AutenticacaoService, usuarioService: UsuarioService) {
+
+export function criarUsuariosRouter(
+  autenticacao: AutenticacaoService,
+  usuarioService: UsuarioService,
+) {
   const router = Router();
   const authMiddleware = criarMiddlewareAuth(autenticacao);
-  router.get('/', authMiddleware, exigirPerfil('ADMINISTRADOR'), async (req, res, next) => {
-    try { const usuarios = await usuarioService.listar(); res.json({ utilizadores: usuarios }); } catch (err) { next(err); }
+  const soAdmin = exigirPerfil('ADMINISTRADOR');
+
+  router.get('/', authMiddleware, soAdmin, async (_req, res, next) => {
+    try { res.json({ utilizadores: await usuarioService.listar() }); } catch (err) { next(err); }
   });
-  router.post('/', authMiddleware, exigirPerfil('ADMINISTRADOR'), async (req, res, next) => {
+
+  router.post('/', authMiddleware, soAdmin, async (req, res, next) => {
     try {
       const dto = CriarUsuarioSchema.parse(req.body);
-      const criado = await usuarioService.criar(dto);
-      res.status(201).json({ utilizador: criado });
+      res.status(201).json({ utilizador: await usuarioService.criar(dto) });
     } catch (err) {
       if (err instanceof UsernameDuplicadoError) { res.status(409).json({ codigo: 'USERNAME_DUPLICADO', mensagem: err.message }); return; }
       next(err);
     }
   });
-  router.put('/:id', authMiddleware, exigirPerfil('ADMINISTRADOR'), async (req, res, next) => {
+
+  router.put('/:id', authMiddleware, soAdmin, async (req, res, next) => {
     try {
       const id = Number(req.params.id);
       if (Number.isNaN(id)) { res.status(400).json({ codigo: 'VALIDACAO', mensagem: 'ID inválido' }); return; }
@@ -35,7 +42,8 @@ export function criarUsuariosRouter(autenticacao: AutenticacaoService, usuarioSe
       next(err);
     }
   });
-  router.delete('/:id', authMiddleware, exigirPerfil('ADMINISTRADOR'), async (req, res, next) => {
+
+  router.delete('/:id', authMiddleware, soAdmin, async (req, res, next) => {
     try {
       const id = Number(req.params.id);
       if (Number.isNaN(id)) { res.status(400).json({ codigo: 'VALIDACAO', mensagem: 'ID inválido' }); return; }
@@ -47,5 +55,20 @@ export function criarUsuariosRouter(autenticacao: AutenticacaoService, usuarioSe
       next(err);
     }
   });
+
+  // Reativar utilizador (ADMIN). Endpoint explícito, simétrico ao desativar.
+  router.post('/:id/reativar', authMiddleware, soAdmin, async (req, res, next) => {
+    try {
+      const id = Number(req.params.id);
+      if (Number.isNaN(id)) { res.status(400).json({ codigo: 'VALIDACAO', mensagem: 'ID inválido' }); return; }
+      const ok = await usuarioService.reativar(id);
+      if (!ok) { res.status(404).json({ codigo: 'NAO_ENCONTRADO', mensagem: 'Utilizador não encontrado' }); return; }
+      res.json({ mensagem: 'Utilizador reativado' });
+    } catch (err) {
+      if (err instanceof UsuarioNaoEncontradoError) { res.status(404).json({ codigo: 'NAO_ENCONTRADO', mensagem: err.message }); return; }
+      next(err);
+    }
+  });
+
   return router;
 }

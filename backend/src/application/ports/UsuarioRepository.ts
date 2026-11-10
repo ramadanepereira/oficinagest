@@ -7,5 +7,6 @@ export interface UsuarioRepository {
   criar(usuario: Usuario): Promise<Usuario>;
   atualizar(id: number, dados: Partial<Omit<Usuario, 'id' | 'criadoEm'>>): Promise<Usuario | null>;
   desativar(id: number): Promise<boolean>;
+  reativar(id: number): Promise<boolean>;
   usernameExiste(username: string, ignorarId?: number): Promise<boolean>;
 }

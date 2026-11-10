@@ -93,6 +93,14 @@ export class PgUsuarioRepository implements UsuarioRepository {
     return (rowCount ?? 0) > 0;
   }
 
+  async reativar(id: number): Promise<boolean> {
+    const { rowCount } = await this.pool.query(
+      'UPDATE usuario SET activo = TRUE WHERE id = $1',
+      [id]
+    );
+    return (rowCount ?? 0) > 0;
+  }
+
   async usernameExiste(username: string, ignorarId?: number): Promise<boolean> {
     if (ignorarId !== undefined) {
       const { rowCount } = await this.pool.query(

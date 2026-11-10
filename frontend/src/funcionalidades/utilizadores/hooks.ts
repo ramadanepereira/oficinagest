@@ -15,7 +15,7 @@ export interface CriarUsuarioDto {
 }
 export interface EditarUsuarioDto {
   nome?: string; email?: string; telefone?: string; password?: string;
-  perfil?: 'ADMINISTRADOR' | 'ATENDENTE' | 'MECANICO'; activo?: boolean;
+  perfil?: 'ADMINISTRADOR' | 'ATENDENTE' | 'MECANICO';
 }
 
 export function useMutacoesUsuario() {
@@ -25,5 +25,6 @@ export function useMutacoesUsuario() {
     criar: useMutation({ mutationFn: (dto: CriarUsuarioDto) => api.post('/utilizadores', dto), onSuccess: invalidar }),
     atualizar: useMutation({ mutationFn: ({ id, dto }: { id: number; dto: EditarUsuarioDto }) => api.put(`/utilizadores/${id}`, dto), onSuccess: invalidar }),
     desativar: useMutation({ mutationFn: (id: number) => api.delete(`/utilizadores/${id}`), onSuccess: invalidar }),
+    reativar: useMutation({ mutationFn: (id: number) => api.post(`/utilizadores/${id}/reativar`), onSuccess: invalidar }),
   };
 }

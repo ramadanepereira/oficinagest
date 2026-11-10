@@ -57,7 +57,7 @@ export function PaginaUtilizadores() {
                       {u.activo ? (
                         <button onClick={() => setADesativar(u)} className="rounded p-1.5 text-state-error hover:bg-state-error/10" title="Desativar"><Trash2 className="h-4 w-4" /></button>
                       ) : (
-                        <button onClick={() => reativar.mutate(u.id)} className="rounded p-1.5 text-state-ok hover:bg-state-ok/10" title="Reativar"><RotateCcw className="h-4 w-4" /></button>
+                        <button onClick={() => reativar.mutate(u.id)} disabled={reativar.isPending} className="rounded p-1.5 text-state-ok hover:bg-state-ok/10 disabled:opacity-50" title="Reativar"><RotateCcw className="h-4 w-4" /></button>
                       )}
                     </div>
                   </td>

@@ -40,6 +40,12 @@ export class UsuarioService {
     if (!existente) throw new UsuarioNaoEncontradoError();
     return this.repositorio.desativar(id);
   }
+
+  async reativar(id: number) {
+    const existente = await this.repositorio.obterPorId(id);
+    if (!existente) throw new UsuarioNaoEncontradoError();
+    return this.repositorio.reativar(id);
+  }
 }
 export class UsernameDuplicadoError extends Error { constructor() { super('Username já existe'); this.name = 'UsernameDuplicadoError'; } }
 export class UsuarioNaoEncontradoError extends Error { constructor() { super('Utilizador não encontrado'); this.name = 'UsuarioNaoEncontradoError'; } }
