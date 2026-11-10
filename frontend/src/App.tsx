@@ -4,6 +4,7 @@ import { LoginPage } from './funcionalidades/login/pagina.tsx';
 import { DashboardPage } from './funcionalidades/dashboard/pagina.tsx';
 import { PaginaInventario } from './funcionalidades/inventario/pagina.tsx';
 import { PaginaMovimentos } from './funcionalidades/movimentos/pagina.tsx';
+import { PaginaRequisicoes } from './funcionalidades/requisicoes/pagina.tsx';
 import { PaginaCategorias } from './funcionalidades/categorias/pagina.tsx';
 import { PaginaEmConstrucao } from './funcionalidades/_placeholder/PaginaEmConstrucao.tsx';
 import { RotaProtegida } from './auth/RotaProtegida.tsx';
@@ -18,7 +19,7 @@ export default function App() {
           <Route path="dashboard" element={<RotaProtegida accao="verDashboard"><DashboardPage /></RotaProtegida>} />
           <Route path="inventario" element={<RotaProtegida accao="verInventario"><PaginaInventario /></RotaProtegida>} />
           <Route path="movimentos" element={<RotaProtegida accao="verMovimentos"><PaginaMovimentos /></RotaProtegida>} />
-          <Route path="requisicoes" element={<RotaProtegida accao="verRequisicoes"><PaginaEmConstrucao titulo="Requisições" /></RotaProtegida>} />
+          <Route path="requisicoes" element={<RotaProtegida accao="verRequisicoes"><PaginaRequisicoes /></RotaProtegida>} />
           <Route path="relatorios" element={<RotaProtegida accao="verRelatorios"><PaginaEmConstrucao titulo="Relatórios" /></RotaProtegida>} />
           <Route path="utilizadores" element={<RotaProtegida accao="gerirUtilizadores"><PaginaEmConstrucao titulo="Utilizadores" /></RotaProtegida>} />
           <Route path="categorias" element={<RotaProtegida accao="gerirCategorias"><PaginaCategorias /></RotaProtegida>} />
