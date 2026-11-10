@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Plus, Pencil, Trash2 } from 'lucide-react';
+import { Plus, Pencil, Trash2, RotateCcw } from 'lucide-react';
 import { useListaCategorias, useMutacoesCategoria } from './hooks.ts';
 import { ModalCategoria } from './ModalCategoria.tsx';
 import { Confirmacao } from '../../componentes/Confirmacao.tsx';
@@ -8,7 +8,7 @@ import type { Categoria } from '../../api/types.ts';
 
 export function PaginaCategorias() {
   const { data, isLoading } = useListaCategorias();
-  const { desativar } = useMutacoesCategoria();
+  const { desativar, reativar } = useMutacoesCategoria();
   const [modalAberto, setModalAberto] = useState(false);
   const [aEditar, setAEditar] = useState<Categoria | null>(null);
   const [aDesativar, setADesativar] = useState<Categoria | null>(null);
@@ -49,8 +49,10 @@ export function PaginaCategorias() {
                   <td className="px-3 py-2.5">
                     <div className="flex justify-end gap-1">
                       <button onClick={() => { setAEditar(c); setModalAberto(true); }} className="rounded p-1.5 text-state-info hover:bg-state-info/10" title="Editar"><Pencil className="h-4 w-4" /></button>
-                      {c.activo && (
+                      {c.activo ? (
                         <button onClick={() => setADesativar(c)} className="rounded p-1.5 text-state-error hover:bg-state-error/10" title="Desativar"><Trash2 className="h-4 w-4" /></button>
+                      ) : (
+                        <button onClick={() => reativar.mutate(c.id)} className="rounded p-1.5 text-state-ok hover:bg-state-ok/10" title="Reativar"><RotateCcw className="h-4 w-4" /></button>
                       )}
                     </div>
                   </td>

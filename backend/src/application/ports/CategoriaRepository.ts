@@ -6,5 +6,6 @@ export interface CategoriaRepository {
   criar(categoria: CategoriaMaterial): Promise<CategoriaMaterial>;
   atualizar(id: number, descricao: string): Promise<CategoriaMaterial | null>;
   desativar(id: number): Promise<boolean>;
+  reativar(id: number): Promise<boolean>;
   descricaoExiste(descricao: string, ignorarId?: number): Promise<boolean>;
 }
