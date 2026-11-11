@@ -1,20 +1,17 @@
-import { Moon, Sun, Monitor } from 'lucide-react';
-import { useTema, type PreferenciaTema } from './useTema.ts';
-
-const ORDEM: PreferenciaTema[] = ['claro', 'escuro', 'sistema'];
+import { Moon, Sun } from 'lucide-react';
+import { useTema } from './useTema.ts';
 
 export function ToggleTema() {
-  const { preferencia, setPreferencia } = useTema();
-  const seguinte = () => {
-    const i = ORDEM.indexOf(preferencia);
-    setPreferencia(ORDEM[(i + 1) % ORDEM.length]);
-  };
-  const Icone = preferencia === 'claro' ? Sun : preferencia === 'escuro' ? Moon : Monitor;
-  const rotulo = preferencia === 'claro' ? 'Tema claro' : preferencia === 'escuro' ? 'Tema escuro' : 'Tema do sistema';
+  const { dark, alternar } = useTema();
   return (
-    <button onClick={seguinte} aria-label={rotulo} title={rotulo}
-      className="rounded-full p-2 text-muted hover:bg-surface dark:hover:bg-surface-dark">
-      <Icone className="h-5 w-5" />
+    <button onClick={alternar} aria-label="Alternar tema"
+      className="flex items-center rounded-full border bg-card p-1 shadow-sm dark:bg-card-dark">
+      <span className={`flex h-7 w-7 items-center justify-center rounded-full ${dark ? 'bg-transparent text-muted' : 'bg-primary text-white'}`}>
+        <Moon className="h-4 w-4" />
+      </span>
+      <span className={`flex h-7 w-7 items-center justify-center rounded-full ${dark ? 'bg-primary text-white' : 'bg-transparent text-muted'}`}>
+        <Sun className="h-4 w-4" />
+      </span>
     </button>
   );
 }

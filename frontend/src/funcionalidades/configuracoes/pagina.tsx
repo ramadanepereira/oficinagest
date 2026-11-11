@@ -1,25 +1,23 @@
 import { useState } from 'react';
-import { Monitor, Sun, Moon, Download, HardHat, CheckCircle2, XCircle, Clock, Info } from 'lucide-react';
+import { Sun, Moon, Download, HardHat, CheckCircle2, XCircle, Clock, Info } from 'lucide-react';
 import { useAuth } from '../../auth/AuthProvider.tsx';
 import { pode } from '../../auth/permissoes.ts';
-import { useTema, type PreferenciaTema } from '../../tema/useTema.ts';
+import { useTema } from '../../tema/useTema.ts';
 import { useHealth, useExportarDados } from './hooks.ts';
 import { Cartao } from '../../componentes/Cartao.tsx';
 
-const opcoesTema: { valor: PreferenciaTema; rotulo: string; Icone: typeof Sun }[] = [
-  { valor: 'claro', rotulo: 'Claro', Icone: Sun },
-  { valor: 'escuro', rotulo: 'Escuro', Icone: Moon },
-  { valor: 'sistema', rotulo: 'Automático', Icone: Monitor },
+const opcoesTema: { valor: boolean; rotulo: string; Icone: typeof Sun }[] = [
+  { valor: false, rotulo: 'Claro', Icone: Sun },
+  { valor: true, rotulo: 'Escuro', Icone: Moon },
 ];
 
 export function PaginaConfiguracoes() {
   const { usuario } = useAuth();
-  const { preferencia, setPreferencia } = useTema();
+  const { dark, setDark } = useTema();
   const { data: health, isLoading: healthLoading, refetch: refetchHealth } = useHealth();
   const exportar = useExportarDados();
   const [confirmacaoBackup, setConfirmacaoBackup] = useState(false);
 
-  // Exportar dados é sensível: só ADMIN.
   const podeExportar = usuario ? pode(usuario.perfil, 'exportarDados') : false;
 
   return (
@@ -64,13 +62,13 @@ export function PaginaConfiguracoes() {
       {/* Aparência (pessoal, todos os perfis) */}
       <Cartao className="p-5">
         <h2 className="mb-4 flex items-center gap-2 font-semibold">
-          <Monitor className="h-4 w-4" /> Aparência
+          <Sun className="h-4 w-4" /> Aparência
         </h2>
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-2 gap-3">
           {opcoesTema.map((o) => {
-            const activo = preferencia === o.valor;
+            const activo = dark === o.valor;
             return (
-              <button key={o.valor} onClick={() => setPreferencia(o.valor)}
+              <button key={o.rotulo} onClick={() => setDark(o.valor)}
                 className={`flex flex-col items-center gap-2 rounded-card border p-4 transition-colors ${
                   activo ? 'border-primary bg-primary/5 text-primary' : 'hover:bg-surface dark:hover:bg-surface-dark'
                 }`}>
@@ -82,7 +80,7 @@ export function PaginaConfiguracoes() {
           })}
         </div>
         <p className="mt-3 text-xs text-muted">
-          A sua preferência é guardada localmente neste navegador. "Automático" segue o tema do sistema operativo.
+          A sua preferência é guardada localmente neste navegador.
         </p>
       </Cartao>
 
