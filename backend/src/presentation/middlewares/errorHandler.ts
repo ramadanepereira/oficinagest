@@ -21,7 +21,7 @@ export function errorHandler(
   if (err instanceof z.ZodError) {
     res.status(400).json({
       codigo: 'VALIDACAO',
-      mensagem: err.errors.map((e) => e.message).join('; '),
+      mensagem: err.issues.map((e: any) => e.message).join('; '),
     });
     return;
   }

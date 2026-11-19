@@ -9,7 +9,7 @@ import { PaginaRelatorios } from './funcionalidades/relatorios/pagina.tsx';
 import { PaginaUtilizadores } from './funcionalidades/utilizadores/pagina.tsx';
 import { PaginaCategorias } from './funcionalidades/categorias/pagina.tsx';
 import { PaginaConfiguracoes } from './funcionalidades/configuracoes/pagina.tsx';
-import { PaginaEmConstrucao } from './funcionalidades/_placeholder/PaginaEmConstrucao.tsx';
+
 import { RotaProtegida } from './auth/RotaProtegida.tsx';
 
 export default function App() {

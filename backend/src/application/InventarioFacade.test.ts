@@ -20,6 +20,7 @@ class MemStock implements StockRepository {
   async guardar(id: number, stock: StockMaterial) { this.mapa.set(id, stock); }
 }
 class MemHistorico implements HistoricoRepository {
+  async listarMovimentos(): Promise<{ itens: any[]; total: number }> { return { itens: [], total: 0 }; }
   movimentos: RegistoMovimento[] = [];
   alteracoes: RegistoAlteracao[] = [];
   async registarMovimento(m: RegistoMovimento) { this.movimentos.push(m); }

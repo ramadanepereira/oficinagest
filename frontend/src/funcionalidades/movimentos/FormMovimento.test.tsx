@@ -14,8 +14,9 @@ function renderForm() {
 describe('FormMovimento (saída)', () => {
   it('valida quantidade inteira > 0', async () => {
     renderForm();
-    const botao = await screen.findByRole('button', { name: /Registar/i });
-    fireEvent.click(botao);
+    const qtd = screen.getByRole('spinbutton');
+    fireEvent.change(qtd, { target: { value: '0' } });
+    fireEvent.click(await screen.findByRole('button', { name: /Registar/i }));
     expect(await screen.findByText(/Deve ser > 0/i)).toBeInTheDocument();
   });
 

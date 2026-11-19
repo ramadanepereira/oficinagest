@@ -16,6 +16,7 @@ const CriarSchema = z.object({
   password: z.string().min(6, 'Mínimo 6 caracteres'),
   confirmar: z.string().min(1, 'Confirme a palavra-passe'),
 }).refine((v) => v.password === v.confirmar, { message: 'As palavras-passe não coincidem', path: ['confirmar'] });
+type CriarValues = z.infer<typeof CriarSchema>;
 
 const EditarSchema = z.object({
   nome: z.string().min(1, 'Obrigatório'),
@@ -26,10 +27,10 @@ const EditarSchema = z.object({
   confirmar: z.string().optional(),
 }).refine((v) => !v.password || v.password.length >= 6, { message: 'Mínimo 6 caracteres', path: ['password'] })
   .refine((v) => !v.password || v.confirmar === v.password, { message: 'As palavras-passe não coincidem', path: ['confirmar'] });
+type EditarValues = z.infer<typeof EditarSchema>;
 
 const inputCls = 'w-full rounded-lg border bg-surface px-3 py-2 pr-10 text-sm outline-none focus:ring-2 focus:ring-primary dark:bg-surface-dark';
 
-// Campo de palavra-passe com botão mostrar/ocultar.
 function CampoPassword({ label, hint, name, register, erro }: {
   label: string; hint?: string; name: string;
   register: UseFormRegister<any>; erro?: string;
@@ -66,9 +67,9 @@ export function ModalUsuario({ aberto, onFechar, usuario }: {
 function FormCriar({ onFechar }: { onFechar: () => void }) {
   const { criar } = useMutacoesUsuario();
   const [erros, setErros] = useState<Record<string, string>>({});
-  const { register, handleSubmit } = useForm({ defaultValues: { perfil: 'MECANICO' as const } });
+  const { register, handleSubmit } = useForm<CriarValues>({ defaultValues: { perfil: 'MECANICO' } });
 
-  async function submeter(v: any) {
+  async function submeter(v: CriarValues) {
     const r = CriarSchema.safeParse(v);
     if (!r.success) {
       const m: Record<string, string> = {};
@@ -109,11 +110,11 @@ function FormCriar({ onFechar }: { onFechar: () => void }) {
 function FormEditar({ usuario, onFechar }: { usuario: Utilizador; onFechar: () => void }) {
   const { atualizar } = useMutacoesUsuario();
   const [erros, setErros] = useState<Record<string, string>>({});
-  const { register, handleSubmit } = useForm({
+  const { register, handleSubmit } = useForm<EditarValues>({
     defaultValues: { nome: usuario.nome, email: usuario.email, telefone: usuario.telefone ?? '', password: '', confirmar: '', perfil: usuario.perfil },
   });
 
-  async function submeter(v: any) {
+  async function submeter(v: EditarValues) {
     const r = EditarSchema.safeParse(v);
     if (!r.success) {
       const m: Record<string, string> = {};
@@ -121,7 +122,9 @@ function FormEditar({ usuario, onFechar }: { usuario: Utilizador; onFechar: () =
       setErros(m); return;
     }
     setErros({});
-    const dto: any = { nome: r.data.nome, email: r.data.email, telefone: r.data.telefone, perfil: r.data.perfil };
+    const dto: Partial<EditarValues> & { nome: string; email: string; perfil: EditarValues['perfil'] } = {
+      nome: r.data.nome, email: r.data.email, telefone: r.data.telefone, perfil: r.data.perfil,
+    };
     if (r.data.password) dto.password = r.data.password;
     try { await atualizar.mutateAsync({ id: usuario.id, dto }); onFechar(); } catch { /* abaixo */ }
   }

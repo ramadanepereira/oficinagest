@@ -34,7 +34,7 @@ export class AutenticacaoService {
   async validarSessao(token: string | undefined): Promise<Usuario | null> {
     if (!token) return null;
     try {
-      const payload = jwt.verify(token, config.JWT_SECRET) as { sub: number };
+      const payload = jwt.verify(token, config.JWT_SECRET) as unknown as { sub: number };
       return this.usuarios.obterPorId(payload.sub);
     } catch {
       return null;

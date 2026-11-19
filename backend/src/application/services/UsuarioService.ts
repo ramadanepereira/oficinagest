@@ -23,10 +23,6 @@ export class UsuarioService {
   async atualizar(id: number, dto: AtualizarUsuarioDto) {
     const existente = await this.repositorio.obterPorId(id);
     if (!existente) throw new UsuarioNaoEncontradoError();
-    if (dto.username && dto.username !== existente.username) {
-      const existe = await this.repositorio.usernameExiste(dto.username, id);
-      if (existe) throw new UsernameDuplicadoError();
-    }
     const dadosAtualizar: any = { ...dto };
     if (dto.password) {
       dadosAtualizar.passwordHash = await this.hasher.hash(dto.password);

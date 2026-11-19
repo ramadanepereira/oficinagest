@@ -5,7 +5,7 @@ import type { CriarMaterialValues, EditarMaterialValues } from './schema.ts';
 
 export interface FiltroInventario {
   query?: string; tipo?: string; categoria?: number; estado?: string;
-  incluirInactivos?: boolean; pagina?: number;
+  incluirInactivos?: boolean; pagina?: number; tamanho?: number;
 }
 const TAMANHO = 8;
 function qs(f: FiltroInventario): string {
@@ -16,7 +16,7 @@ function qs(f: FiltroInventario): string {
   if (f.estado) p.set('estado', f.estado);
   if (f.incluirInactivos) p.set('incluirInactivos', 'true');
   p.set('pagina', String(f.pagina ?? 1));
-  p.set('tamanho', String(TAMANHO));
+  p.set('tamanho', String(f.tamanho ?? TAMANHO));
   return p.toString();
 }
 export function useMateriais(f: FiltroInventario) {
