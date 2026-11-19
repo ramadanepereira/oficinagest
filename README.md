@@ -3,18 +3,18 @@
 
 ## Índice
 
-1. Introdução
-2. Problema, objectivos e âmbito
-3. Metodologia de desenvolvimento
-4. Descrição funcional
-5. Arquitectura do sistema
-6. Padrões e decisões de projecto
-7. Tecnologias e ferramentas
-8. Modelo de dados e persistência
-9. Segurança, privacidade e limitações
-10. Instalação e execução
-11. Testes e critérios de validação
-12. Conclusão
+1. [Introdução](#1-introdução)
+2. [Problema, objectivos e âmbito](#2-problema-objectivos-e-âmbito)
+3. [Metodologia de desenvolvimento](#3-metodologia-de-desenvolvimento)
+4. [Descrição funcional](#4-descrição-funcional)
+5. [Arquitectura do sistema](#5-arquitectura-do-sistema)
+6. [Padrões e decisões de projecto](#6-padrões-e-decisões-de-projecto)
+7. [Tecnologias e ferramentas](#7-tecnologias-e-ferramentas)
+8. [Modelo de dados e persistência](#8-modelo-de-dados-e-persistência)
+9. [Segurança, privacidade e limitações](#9-segurança-privacidade-e-limitações)
+10. [Instalação e execução](#10-instalação-e-execução)
+11. [Testes e critérios de validação](#11-testes-e-critérios-de-validação)
+12. [Conclusão](#12-conclusão)
 
 ---
 
