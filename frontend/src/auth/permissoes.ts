@@ -21,7 +21,7 @@ const MATRIZ: Record<Perfil, readonly Accao[]> = {
     'verDashboard', 'verInventario',
     'registarMovimentos', 'verMovimentos',
     'verRequisicoes', 'aprovarRequisicoes',
-    'verRelatorios', 'verConfiguracoes',
+    'verConfiguracoes',
   ],
   MECANICO: [
     'verDashboard', 'verInventario',

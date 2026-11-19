@@ -12,7 +12,7 @@ export function criarRelatoriosRouter(
   const router = Router();
   const auth = criarMiddlewareAuth(autenticacao);
   // ATENDENTE e ADMIN podem ver relatórios; MECÂNICO não (secção 6).
-  const podeVer = exigirPerfil('ADMINISTRADOR', 'ATENDENTE');
+  const podeVer = exigirPerfil('ADMINISTRADOR');
 
   // GET /relatorios/movimentos?periodo=diario|semanal|mensal
   router.get('/movimentos', auth, podeVer, async (req, res, next) => {
